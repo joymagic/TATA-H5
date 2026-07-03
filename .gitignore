@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+.pnpm-store/
+dist/
+apps/*/dist/
+.env
+.env.*
+!.env.example
+*.log
+docs/design-reference/silent-festival-kv-style-reference.png

@@ -1,0 +1,14 @@
+{
+  "name": "tata-silent-personality-h5",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @tata/h5 dev",
+    "build": "pnpm --filter @tata/h5 build",
+    "typecheck": "pnpm --filter @tata/h5 typecheck",
+    "test": "node tests/score.test.mjs",
+    "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs"
+  },
+  "packageManager": "pnpm@11.7.0"
+}
