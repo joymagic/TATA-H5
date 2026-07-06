@@ -124,21 +124,22 @@ export function App() {
     return <LoginScreen runtime={RUNTIME} onLogin={setSession} />;
   }
 
-  const scopedDashboardFilters = withRoleDefaults(session, dashboardFilters);
-  const dashboardData = RUNTIME.useMockData ? getDashboardData(session, scopedDashboardFilters) : EMPTY_DASHBOARD;
-  const scopedUserFilters = session.role === "CITY_ADMIN" ? { ...userFilters, city: session.city } : userFilters;
-  const users = RUNTIME.useMockData ? getScopedLeads(session, scopedUserFilters) : [];
-  const issuedCoupons = RUNTIME.useMockData ? getIssuedCoupons(session, scopedUserFilters) : [];
+  const activeSession = session;
+  const scopedDashboardFilters = withRoleDefaults(activeSession, dashboardFilters);
+  const dashboardData = RUNTIME.useMockData ? getDashboardData(activeSession, scopedDashboardFilters) : EMPTY_DASHBOARD;
+  const scopedUserFilters = activeSession.role === "CITY_ADMIN" ? { ...userFilters, city: activeSession.city } : userFilters;
+  const users = RUNTIME.useMockData ? getScopedLeads(activeSession, scopedUserFilters) : [];
+  const issuedCoupons = RUNTIME.useMockData ? getIssuedCoupons(activeSession, scopedUserFilters) : [];
   const pageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const visibleUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function resetDashboardFilters() {
-    setDashboardFilters(session.role === "CITY_ADMIN" ? { ...INITIAL_DASHBOARD_FILTERS, city: session.city } : INITIAL_DASHBOARD_FILTERS);
+    setDashboardFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_DASHBOARD_FILTERS, city: activeSession.city } : INITIAL_DASHBOARD_FILTERS);
     pushLog("筛选重置", "数据看板筛选已重置");
   }
 
   function resetUserFilters() {
-    setUserFilters(session.role === "CITY_ADMIN" ? { ...INITIAL_USER_FILTERS, city: session.city } : INITIAL_USER_FILTERS);
+    setUserFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_USER_FILTERS, city: activeSession.city } : INITIAL_USER_FILTERS);
     setPage(1);
     pushLog("筛选重置", "用户数据筛选已重置");
   }
@@ -150,11 +151,11 @@ export function App() {
       ...dashboardData.conversions.map((item) => [item.label, `${item.value}%`, item.hint]),
     ];
     downloadCsv("tata-admin-dashboard.csv", rows.map((row) => row.join(",")).join("\n"));
-    pushLog("导出活动看板", `已导出 ${session.role === "CITY_ADMIN" ? session.city : "全部城市"} 活动看板`);
+    pushLog("导出活动看板", `已导出 ${activeSession.role === "CITY_ADMIN" ? activeSession.city : "全部城市"} 活动看板`);
   }
 
   function exportUsers() {
-    downloadCsv("tata-admin-users.csv", createLeadCsv(users, session.role === "HEADQUARTERS_ADMIN"));
+    downloadCsv("tata-admin-users.csv", createLeadCsv(users, activeSession.role === "HEADQUARTERS_ADMIN"));
     pushLog("导出用户表", `已导出 ${formatNumber(users.length)} 条用户数据`);
   }
 
@@ -164,7 +165,7 @@ export function App() {
   }
 
   function simulateCouponAction(action: string) {
-    if (session.role !== "HEADQUARTERS_ADMIN") {
+    if (activeSession.role !== "HEADQUARTERS_ADMIN") {
       pushLog("权限拦截", "城市 ADMIN 无权操作券码池");
       return;
     }
@@ -172,7 +173,7 @@ export function App() {
   }
 
   function disableCoupon(code: string) {
-    if (session.role !== "HEADQUARTERS_ADMIN") {
+    if (activeSession.role !== "HEADQUARTERS_ADMIN") {
       pushLog("权限拦截", "城市 ADMIN 无权停用券码");
       return;
     }
@@ -211,8 +212,8 @@ export function App() {
             <div className="account-card">
               <ShieldCheck size={18} />
               <div>
-                <strong>{session.displayName}</strong>
-                <span>{roleLabel(session.role)} · {session.city}</span>
+                <strong>{activeSession.displayName}</strong>
+                <span>{roleLabel(activeSession.role)} · {activeSession.city}</span>
               </div>
             </div>
             <button className="ghost-button" type="button" onClick={handleLogout}>
@@ -228,9 +229,9 @@ export function App() {
           <DashboardPanel
             data={dashboardData}
             filters={scopedDashboardFilters}
-            role={session.role}
+            role={activeSession.role}
             onExport={exportDashboard}
-            onFiltersChange={(filters) => setDashboardFilters(withRoleDefaults(session, filters))}
+            onFiltersChange={(filters) => setDashboardFilters(withRoleDefaults(activeSession, filters))}
             onQuery={() => pushLog("查询活动看板", "数据看板筛选已更新")}
             onReset={resetDashboardFilters}
           />
@@ -241,8 +242,8 @@ export function App() {
             issuedCoupons={issuedCoupons}
             page={page}
             pageCount={pageCount}
-            role={session.role}
-            session={session}
+            role={activeSession.role}
+            session={activeSession}
             runtime={RUNTIME}
             users={users}
             visibleUsers={visibleUsers}
@@ -251,7 +252,7 @@ export function App() {
             onExportCoupons={exportIssuedCoupons}
             onExportUsers={exportUsers}
             onFiltersChange={(filters) => {
-              setUserFilters(session.role === "CITY_ADMIN" ? { ...filters, city: session.city } : filters);
+              setUserFilters(activeSession.role === "CITY_ADMIN" ? { ...filters, city: activeSession.city } : filters);
               setPage(1);
             }}
             onPageChange={setPage}
