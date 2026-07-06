@@ -1,4 +1,5 @@
 export type OptionKey = "A" | "B" | "C" | "D";
+export type ProductKey = "level1" | "level2" | "level3" | "level4";
 
 export type Screen =
   | "loading"
@@ -19,7 +20,7 @@ export interface QuizResult {
   title: string;
   scene: string;
   description: string;
-  productKey: string;
+  productKey: ProductKey;
 }
 
 export interface SessionState {

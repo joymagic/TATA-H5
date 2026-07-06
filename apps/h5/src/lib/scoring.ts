@@ -1,6 +1,13 @@
 import { OPTION_SCORES, QUESTIONS } from "@tata/shared-config";
 import { RESULTS } from "@tata/shared-config";
-import type { OptionKey, QuizResult } from "../types";
+import type { OptionKey, ProductKey, QuizResult } from "../types";
+
+const PRODUCT_KEYS = new Set<ProductKey>(["level1", "level2", "level3", "level4"]);
+
+function toProductKey(value: string): ProductKey {
+  if (PRODUCT_KEYS.has(value as ProductKey)) return value as ProductKey;
+  throw new Error(`Unknown product key: ${value}`);
+}
 
 export function calculateScore(answers: OptionKey[]) {
   return answers.reduce((total, answer, index) => {
@@ -15,7 +22,7 @@ export function getResultByScore(score: number): QuizResult {
   if (!result) {
     throw new Error(`Score out of result ranges: ${score}`);
   }
-  return { ...result, score };
+  return { ...result, productKey: toProductKey(result.productKey), score };
 }
 
 export function calculateResult(answers: OptionKey[]) {

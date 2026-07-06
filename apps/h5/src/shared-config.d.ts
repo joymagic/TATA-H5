@@ -1,4 +1,6 @@
 declare module "@tata/shared-config" {
+  export type AssetProductKey = "level1" | "level2" | "level3" | "level4";
+
   export const ACTIVITY_CONFIG: {
     activityId: string;
     environmentLabel: string;
@@ -19,7 +21,7 @@ declare module "@tata/shared-config" {
     silentDayIcon: string;
     silentSpaceHero: string;
     posterReference: string;
-    products: Record<string, string>;
+    products: Record<AssetProductKey, string>;
   };
 
   export const H5_COPY: {
@@ -65,6 +67,6 @@ declare module "@tata/shared-config" {
     minScore: number;
     maxScore: number;
     description: string;
-    productKey: string;
+    productKey: AssetProductKey;
   }>;
 }
