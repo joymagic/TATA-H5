@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @tata/h5 dev",
-    "build": "pnpm --filter @tata/h5 build",
-    "typecheck": "pnpm --filter @tata/h5 typecheck",
+    "dev:admin": "pnpm --filter @tata/admin dev",
+    "build": "pnpm --filter @tata/h5 build && pnpm --filter @tata/admin build",
+    "build:h5": "pnpm --filter @tata/h5 build",
+    "build:admin": "pnpm --filter @tata/admin build",
+    "build:pages": "pnpm build && node scripts/prepare-pages.cjs",
+    "typecheck": "pnpm --filter @tata/h5 typecheck && pnpm --filter @tata/admin typecheck",
     "test": "node tests/score.test.mjs",
+    "generate:coupons": "node scripts/generate-coupons.cjs",
     "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs"
   },
   "packageManager": "pnpm@11.7.0"
