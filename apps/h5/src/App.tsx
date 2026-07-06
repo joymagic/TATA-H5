@@ -281,8 +281,10 @@ function LoadingScreen({ progress }: { progress: number }) {
   return (
     <section className="screen loading-screen">
       <BrandHeader />
-      <div className="neon-door loading-door">
-        <div className="door-inner">TATA</div>
+      <div className="loading-orbit" aria-hidden="true">
+        <div className="quiet-door loading-door">
+          <div className="door-inner">TATA</div>
+        </div>
       </div>
       <div className="progress-track">
         <span style={{ width: `${progress}%` }} />
@@ -307,11 +309,9 @@ function HomeScreen({
       <button className="icon-button music-button" type="button" onClick={onAudioToggle} aria-label="音乐开关">
         {audioEnabled ? <Music2 size={20} /> : <VolumeX size={20} />}
       </button>
-      <div className="home-scene" aria-hidden="true">
-        <div className="scene-chair" />
-        <div className="neon-door home-door">
-          <div className="door-inner">TATA</div>
-        </div>
+      <div className="home-scene">
+        <img className="home-kv" src={ASSETS.silentSpaceHero} alt="" aria-hidden="true" />
+        <img className="silent-day-mark" src={ASSETS.silentDayIcon} alt="" aria-hidden="true" />
       </div>
       <div className="hero-title">
         <span>{H5_COPY.home.titleLines[0]}</span>
@@ -375,7 +375,7 @@ function ResultLoadingScreen({ hasError, onRetry }: { hasError: boolean; onRetry
         <strong>{H5_COPY.resultLoading.titleLines[1]}</strong>
       </div>
       <div className="hex-door" aria-hidden="true">
-        <div className="neon-door compact-door">
+        <div className="quiet-door compact-door">
           <div className="door-inner" />
         </div>
       </div>
@@ -409,14 +409,8 @@ function ResultScreen({
         <h1>{result.title}</h1>
         <p>{result.description}</p>
         <div className="result-scene-card" aria-hidden="true">
-          <div className="scene-perspective">
-            <i />
-            <i />
-            <i />
-          </div>
-          <div className="scene-neon-door">
-            <span />
-          </div>
+          <img src={ASSETS.products[result.productKey]} alt="" aria-hidden="true" />
+          <span className="result-wave" aria-hidden="true" />
         </div>
       </div>
       <div className="sound-value">

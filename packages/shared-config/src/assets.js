@@ -1,6 +1,7 @@
 export const ASSETS = {
   logo: "/assets/brand/tata-logo.png",
   silentDayIcon: "/assets/brand/silent-day-icon.png",
+  silentSpaceHero: "/assets/generated/silent-space-hero.jpg",
   posterReference: "/assets/reference/final-poster-reference.webp",
   products: {
     level1: "/assets/products/level-1-door.webp",

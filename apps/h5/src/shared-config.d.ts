@@ -17,6 +17,7 @@ declare module "@tata/shared-config" {
   export const ASSETS: {
     logo: string;
     silentDayIcon: string;
+    silentSpaceHero: string;
     posterReference: string;
     products: Record<string, string>;
   };

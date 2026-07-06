@@ -26,6 +26,20 @@ function coverImage(
   context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
+function containImage(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
 export async function generatePoster(result: QuizResult) {
   const canvas = document.createElement("canvas");
   const width = 750;
@@ -36,60 +50,60 @@ export async function generatePoster(result: QuizResult) {
   if (!context) throw new Error("Canvas is not supported");
 
   const logo = await loadImage(ASSETS.logo);
+  const background = await loadImage(ASSETS.silentSpaceHero);
+  const product = await loadImage(ASSETS.products[result.productKey]);
 
-  const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#050506");
-  gradient.addColorStop(0.45, "#160306");
-  gradient.addColorStop(1, "#07080b");
-  context.fillStyle = gradient;
+  coverImage(context, background, 0, 0, width, height);
+
+  context.save();
+  const wash = context.createLinearGradient(0, 0, 0, height);
+  wash.addColorStop(0, "rgba(245, 251, 255, 0.42)");
+  wash.addColorStop(0.46, "rgba(238, 247, 251, 0.72)");
+  wash.addColorStop(1, "rgba(232, 243, 249, 0.98)");
+  context.fillStyle = wash;
   context.fillRect(0, 0, width, height);
-
-  context.save();
-  context.globalAlpha = 0.32;
-  for (let i = 0; i < 48; i += 1) {
-    context.strokeStyle = i % 5 === 0 ? "#ff1e2d" : "#323238";
-    context.lineWidth = i % 5 === 0 ? 2 : 1;
-    context.beginPath();
-    context.moveTo(0, 120 + i * 18);
-    context.lineTo(width, 60 + i * 14);
-    context.stroke();
-  }
   context.restore();
 
   context.save();
-  context.shadowColor = "#ff1e2d";
-  context.shadowBlur = 28;
-  context.strokeStyle = "#ff1e2d";
-  context.lineWidth = 5;
-  context.beginPath();
-  context.moveTo(58, 58);
-  context.lineTo(width - 58, 58);
-  context.lineTo(width - 28, height - 78);
-  context.lineTo(42, height - 78);
-  context.closePath();
-  context.stroke();
-  context.restore();
-
-  context.drawImage(logo, 54, 54, 210, 44);
-
-  drawNeonRoom(context, 270, 300, 330, 420);
-
-  context.fillStyle = "#ffffff";
-  context.font = '700 44px "Arial", sans-serif';
-  context.fillText(result.levelDisplay, 58, 178);
-  context.fillStyle = "#ff1e2d";
-  context.font = '900 88px "Arial", sans-serif';
-  context.fillText(result.title, 58, 275);
-  context.fillStyle = "#ffffff";
-  context.font = '600 34px "Arial", sans-serif';
-  context.fillText(result.scene, 62, 335);
-
-  context.fillStyle = "rgba(8, 8, 10, 0.78)";
-  context.strokeStyle = "#ff1e2d";
+  context.strokeStyle = "rgba(123, 186, 217, 0.32)";
   context.lineWidth = 2;
-  context.fillRect(58, 785, 634, 145);
-  context.strokeRect(58, 785, 634, 145);
-  context.fillStyle = "#ffffff";
+  [150, 230, 320].forEach((radius) => {
+    context.beginPath();
+    context.arc(width - 138, 506, radius, -Math.PI * 0.92, Math.PI * 0.44);
+    context.stroke();
+  });
+  context.restore();
+
+  roundRect(context, 46, 46, 236, 76, 24);
+  context.fillStyle = "rgba(11, 35, 49, 0.78)";
+  context.fill();
+  context.drawImage(logo, 72, 66, 184, 38);
+
+  context.save();
+  context.shadowColor = "rgba(45, 78, 101, 0.24)";
+  context.shadowBlur = 30;
+  containImage(context, product, 398, 306, 246, 470);
+  context.restore();
+
+  pill(context, 58, 168, 214, 52, "rgba(255, 255, 255, 0.74)", "rgba(217, 20, 39, 0.26)");
+  context.fillStyle = "#D91427";
+  context.font = '700 28px "Arial", sans-serif';
+  context.fillText(result.levelDisplay, 84, 203);
+
+  context.fillStyle = "#0B2331";
+  context.font = '900 88px "Arial", sans-serif';
+  context.fillText(result.title, 58, 308);
+  context.fillStyle = "#5F7480";
+  context.font = '600 34px "Arial", sans-serif';
+  context.fillText(result.scene, 62, 366);
+
+  roundRect(context, 58, 790, 634, 150, 28);
+  context.fillStyle = "rgba(255, 255, 255, 0.82)";
+  context.fill();
+  context.strokeStyle = "rgba(45, 87, 105, 0.16)";
+  context.lineWidth = 2;
+  context.stroke();
+  context.fillStyle = "#183140";
   context.font = '400 28px "Arial", sans-serif';
   const lines = wrapText(context, result.description, 575);
   lines.slice(0, 3).forEach((line, index) => {
@@ -100,17 +114,18 @@ export async function generatePoster(result: QuizResult) {
   await QRCode.toCanvas(qrCanvas, ACTIVITY_CONFIG.shareUrl, {
     width: 146,
     margin: 1,
-    color: { dark: "#0D0D0F", light: "#FFFFFF" },
+    color: { dark: "#0B2331", light: "#FFFFFF" },
   });
   context.fillStyle = "#ffffff";
-  context.fillRect(86, 975, 166, 166);
+  roundRect(context, 78, 962, 182, 182, 24);
+  context.fill();
   context.drawImage(qrCanvas, 96, 985, 146, 146);
-  context.fillStyle = "#ffffff";
+  context.fillStyle = "#0B2331";
   context.font = '700 30px "Arial", sans-serif';
   context.fillText(H5_COPY.poster.bottomLines[0], 286, 1030);
   context.font = '400 24px "Arial", sans-serif';
   context.fillText(H5_COPY.poster.bottomLines[1], 286, 1078);
-  context.fillStyle = "#ff1e2d";
+  context.fillStyle = "#D91427";
   context.font = '500 22px "Arial", sans-serif';
   context.fillText(H5_COPY.poster.qrLabel, 135, 1168);
 
@@ -133,35 +148,34 @@ function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: num
   return lines;
 }
 
-function drawNeonRoom(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) {
-  context.save();
-  context.shadowColor = "#ff1e2d";
-  context.shadowBlur = 24;
-  context.strokeStyle = "#ff1e2d";
-  context.lineWidth = 5;
+function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  const corner = Math.min(radius, width / 2, height / 2);
   context.beginPath();
-  context.moveTo(x + 56, y + 20);
-  context.lineTo(x + width - 16, y + 64);
-  context.lineTo(x + width - 34, y + height);
-  context.lineTo(x + 20, y + height - 38);
+  context.moveTo(x + corner, y);
+  context.lineTo(x + width - corner, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + corner);
+  context.lineTo(x + width, y + height - corner);
+  context.quadraticCurveTo(x + width, y + height, x + width - corner, y + height);
+  context.lineTo(x + corner, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - corner);
+  context.lineTo(x, y + corner);
+  context.quadraticCurveTo(x, y, x + corner, y);
   context.closePath();
-  context.stroke();
+}
 
-  context.shadowBlur = 12;
-  context.strokeStyle = "rgba(255, 255, 255, 0.38)";
+function pill(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: string,
+  stroke: string,
+) {
+  roundRect(context, x, y, width, height, height / 2);
+  context.fillStyle = fill;
+  context.fill();
+  context.strokeStyle = stroke;
   context.lineWidth = 2;
-  for (let i = 0; i < 5; i += 1) {
-    context.beginPath();
-    context.moveTo(x + 48 + i * 45, y + 62);
-    context.lineTo(x + 22 + i * 38, y + height - 42);
-    context.stroke();
-  }
-
-  context.strokeStyle = "#ff1e2d";
-  context.lineWidth = 4;
-  context.strokeRect(x + 118, y + 108, 118, 238);
-  context.fillStyle = "#ff1e2d";
-  context.font = '800 28px "Arial", sans-serif';
-  context.fillText("TATA", x + 146, y + 232);
-  context.restore();
+  context.stroke();
 }
