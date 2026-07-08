@@ -249,7 +249,7 @@ export function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">TATA 静音人格测试</p>
-            <h1>{view === "dashboard" ? "数据看板" : "用户数据及奖项管理"}</h1>
+            <h1>{view === "dashboard" ? "数据看板" : activeSession.role === "CITY_ADMIN" ? "用户信息" : "用户数据及奖项管理"}</h1>
           </div>
           <div className="account-area">
             <span className="env-badge">{RUNTIME.badge}</span>
@@ -584,6 +584,7 @@ function UsersPanel({
   onSimulateCouponAction: (action: string) => void;
   onUpdatePrizeTotal: (code: string, total: number) => void;
 }) {
+  const canManagePrizes = role === "HEADQUARTERS_ADMIN";
   const userStats = useMemo(() => {
     return [
       { label: "总用户数", value: users.length },
@@ -606,58 +607,61 @@ function UsersPanel({
         ))}
       </section>
 
-      <section className="coupon-summary">
-        <div>
-          <p className="eyebrow">奖项领取进度</p>
-          <h2>券码池 {COUPON_BATCH.batchId}</h2>
-        </div>
-        <div className="coupon-tier-grid">
-          {prizeConfigs.map((tier) => {
-            const used = issuedCoupons.filter((coupon) => coupon.prize === tier.name).length;
-            return (
-              <article key={tier.code}>
-                <span>{tier.name}</span>
-                <strong>{formatNumber(used)} / {formatNumber(tier.total)}</strong>
-                <small>已发放 / 总量 · 概率 {formatPrizeProbability(tier.probability)}</small>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="toolbar-panel" aria-label="奖项数量配置">
-        {prizeConfigs.map((tier) => (
-          <label className="filter-field prize-config-field" key={tier.code}>
-            <span className="prize-config-label">
-              <span>{tier.name}数量</span>
-              <small>概率 {formatPrizeProbability(tier.probability)}</small>
-            </span>
-            <div className="input-shell">
-              <Ticket size={17} />
-              <input
-                aria-label={`${tier.name}数量`}
-                disabled={role !== "HEADQUARTERS_ADMIN"}
-                inputMode="numeric"
-                min={0}
-                step={1}
-                type="number"
-                value={tier.total}
-                onChange={(event) => onUpdatePrizeTotal(tier.code, Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
-              />
+      {canManagePrizes ? (
+        <>
+          <section className="coupon-summary">
+            <div>
+              <p className="eyebrow">奖项领取进度</p>
+              <h2>券码池 {COUPON_BATCH.batchId}</h2>
             </div>
-          </label>
-        ))}
-        <div className="toolbar-actions">
-          <button className="light-button" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={onResetPrizeConfigs}>
-            <RefreshCcw size={16} />
-            重置
-          </button>
-          <button className="primary-button compact" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={onSavePrizeConfigs}>
-            <CheckCircle2 size={16} />
-            保存
-          </button>
-        </div>
-      </section>
+            <div className="coupon-tier-grid">
+              {prizeConfigs.map((tier) => {
+                const used = issuedCoupons.filter((coupon) => coupon.prize === tier.name).length;
+                return (
+                  <article key={tier.code}>
+                    <span>{tier.name}</span>
+                    <strong>{formatNumber(used)} / {formatNumber(tier.total)}</strong>
+                    <small>已发放 / 总量 · 概率 {formatPrizeProbability(tier.probability)}</small>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="toolbar-panel" aria-label="奖项数量配置">
+            {prizeConfigs.map((tier) => (
+              <label className="filter-field prize-config-field" key={tier.code}>
+                <span className="prize-config-label">
+                  <span>{tier.name}数量</span>
+                  <small>概率 {formatPrizeProbability(tier.probability)}</small>
+                </span>
+                <div className="input-shell">
+                  <Ticket size={17} />
+                  <input
+                    aria-label={`${tier.name}数量`}
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    type="number"
+                    value={tier.total}
+                    onChange={(event) => onUpdatePrizeTotal(tier.code, Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+                  />
+                </div>
+              </label>
+            ))}
+            <div className="toolbar-actions">
+              <button className="light-button" type="button" onClick={onResetPrizeConfigs}>
+                <RefreshCcw size={16} />
+                重置
+              </button>
+              <button className="primary-button compact" type="button" onClick={onSavePrizeConfigs}>
+                <CheckCircle2 size={16} />
+                保存
+              </button>
+            </div>
+          </section>
+        </>
+      ) : null}
 
       <section className="toolbar-panel user-toolbar">
         <label className="filter-field wide-field">
@@ -752,104 +756,71 @@ function UsersPanel({
         </div>
       </section>
 
-      <section className="table-section">
-        <div className="section-heading">
-          <SectionTitle title="奖券数据" subtitle={role === "HEADQUARTERS_ADMIN" ? "总部 ADMIN 可管理券码池" : "城市 ADMIN 仅查看所属城市已发放券码"} />
-          <div className="section-actions">
-            <button className="light-button" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={() => onSimulateCouponAction("批量生成券码")}>
-              <Ticket size={16} />
-              批量生成券码
-            </button>
-            <button className="light-button" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={() => onSimulateCouponAction("导入券码")}>
-              <Upload size={16} />
-              导入券码
-            </button>
-            <button className="dark-button" type="button" onClick={onExportCoupons}>
-              <Download size={16} />
-              导出已发放券码
-            </button>
+      {canManagePrizes ? (
+        <section className="table-section">
+          <div className="section-heading">
+            <SectionTitle title="奖券数据" subtitle="总部 ADMIN 可管理券码池" />
+            <div className="section-actions">
+              <button className="light-button" type="button" onClick={() => onSimulateCouponAction("批量生成券码")}>
+                <Ticket size={16} />
+                批量生成券码
+              </button>
+              <button className="light-button" type="button" onClick={() => onSimulateCouponAction("导入券码")}>
+                <Upload size={16} />
+                导入券码
+              </button>
+              <button className="dark-button" type="button" onClick={onExportCoupons}>
+                <Download size={16} />
+                导出已发放券码
+              </button>
+            </div>
           </div>
-        </div>
 
-        {role === "HEADQUARTERS_ADMIN" ? (
-          <>
-            <div className="download-row">
-              <span>完整开发券码池 CSV：</span>
-              <a className="text-link" href={COUPON_EXPORT_PATH} download>下载本地开发券码池</a>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>编号</th>
-                    <th>券码</th>
-                    <th>奖项</th>
-                    <th>状态</th>
-                    <th>批次</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inventoryRows.map((coupon) => {
-                    const disabled = disabledCodes.has(coupon.code);
-                    return (
-                      <tr key={coupon.code}>
-                        <td>{coupon.id}</td>
-                        <td className="code-cell">{coupon.code}</td>
-                        <td>{prizeNameForCouponAmount(coupon.amount)}</td>
-                        <td><span className={disabled ? "status-pill status-disabled" : "status-pill status-available"}>{disabled ? "已停用" : "可用"}</span></td>
-                        <td>{coupon.batchId}</td>
-                        <td>
-                          <div className="row-actions">
-                            <button className="icon-text-button" type="button" onClick={() => onCopy(coupon.code)}>
-                              <Clipboard size={15} />
-                              复制
-                            </button>
-                            <button className="icon-text-button danger" type="button" disabled={disabled} onClick={() => onDisableCoupon(coupon.code)}>
-                              停用
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
+          <div className="download-row">
+            <span>完整开发券码池 CSV：</span>
+            <a className="text-link" href={COUPON_EXPORT_PATH} download>下载本地开发券码池</a>
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th>编号</th>
                   <th>券码</th>
                   <th>奖项</th>
                   <th>状态</th>
-                  <th>绑定手机号</th>
-                  <th>所属城市</th>
-                  <th>发放时间</th>
+                  <th>批次</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {issuedCoupons.length ? (
-                  issuedCoupons.map((coupon) => (
+                {inventoryRows.map((coupon) => {
+                  const disabled = disabledCodes.has(coupon.code);
+                  return (
                     <tr key={coupon.code}>
+                      <td>{coupon.id}</td>
                       <td className="code-cell">{coupon.code}</td>
-                      <td>{coupon.prize}</td>
-                      <td><span className="status-pill status-issued">{coupon.status}</span></td>
-                      <td>{coupon.phone}</td>
-                      <td>{coupon.city}</td>
-                      <td>{coupon.issuedAt}</td>
+                      <td>{prizeNameForCouponAmount(coupon.amount)}</td>
+                      <td><span className={disabled ? "status-pill status-disabled" : "status-pill status-available"}>{disabled ? "已停用" : "可用"}</span></td>
+                      <td>{coupon.batchId}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button className="icon-text-button" type="button" onClick={() => onCopy(coupon.code)}>
+                            <Clipboard size={15} />
+                            复制
+                          </button>
+                          <button className="icon-text-button danger" type="button" disabled={disabled} onClick={() => onDisableCoupon(coupon.code)}>
+                            停用
+                          </button>
+                        </div>
+                      </td>
                     </tr>
-                  ))
-                ) : (
-                  <EmptyTable colSpan={6} text="暂无已发放券码" />
-                )}
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        )}
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }
