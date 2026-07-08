@@ -50,7 +50,6 @@ import {
   createOperationLog,
   downloadCsv,
   formatNumber,
-  formatPercent,
   formatPrizeProbability,
   getCouponInventoryRows,
   getDashboardData,
@@ -78,12 +77,6 @@ const EMPTY_DASHBOARD: DashboardData = {
     { label: "提交客资人数", value: 0, hint: "等待 API 返回" },
     { label: "抽奖人数", value: 0, hint: "等待 API 返回" },
   ],
-  conversions: [
-    { label: "测试完成率", value: 0, hint: "等待 API 返回" },
-    { label: "客资转化率", value: 0, hint: "等待 API 返回" },
-    { label: "抽奖参与率", value: 0, hint: "等待 API 返回" },
-  ],
-  trend: [],
   personality: PERSONALITIES.map((label) => ({ label, value: 0 })),
   funnel: [],
   channel: [...CHANNELS].map((label) => ({ label, value: 0 })),
@@ -200,7 +193,6 @@ export function App() {
     const rows = [
       ["指标", "数值", "说明"],
       ...dashboardData.metrics.map((item) => [item.label, String(item.value), item.hint]),
-      ...dashboardData.conversions.map((item) => [item.label, `${item.value}%`, item.hint]),
     ];
     downloadCsv("tata-admin-dashboard.csv", rows.map((row) => row.join(",")).join("\n"));
     pushLog("导出活动看板", `已导出 ${activeSession.role === "CITY_ADMIN" ? activeSession.city : "全部城市"} 活动看板`);
@@ -525,20 +517,7 @@ function DashboardPanel({
         ))}
       </section>
 
-      <section className="conversion-grid" aria-label="转化率指标">
-        {data.conversions.map((metric) => (
-          <article className="conversion-card" key={metric.label}>
-            <span>{metric.label}</span>
-            <strong>{formatPercent(metric.value)}</strong>
-            <small>{metric.hint}</small>
-          </article>
-        ))}
-      </section>
-
       <section className="dashboard-grid">
-        <ChartPanel title="每日趋势" icon={<BarChart3 size={18} />}>
-          <TrendChart data={data.trend} />
-        </ChartPanel>
         <ChartPanel title="人格分布" icon={<PieChart size={18} />}>
           <BarList data={data.personality} />
         </ChartPanel>
@@ -648,8 +627,11 @@ function UsersPanel({
 
       <section className="toolbar-panel" aria-label="奖项数量配置">
         {prizeConfigs.map((tier) => (
-          <label className="filter-field" key={tier.code}>
-            <span>{tier.name}数量</span>
+          <label className="filter-field prize-config-field" key={tier.code}>
+            <span className="prize-config-label">
+              <span>{tier.name}数量</span>
+              <small>概率 {formatPrizeProbability(tier.probability)}</small>
+            </span>
             <div className="input-shell">
               <Ticket size={17} />
               <input
@@ -894,24 +876,6 @@ function ChartPanel({ title, icon, children }: { title: string; icon: ReactNode;
       </div>
       {children}
     </section>
-  );
-}
-
-function TrendChart({ data }: { data: DashboardData["trend"] }) {
-  const maxValue = Math.max(1, ...data.map((item) => item.visits));
-  if (!data.length) return <EmptyState text="等待测试环境 API 返回趋势数据" />;
-  return (
-    <div className="trend-chart">
-      {data.map((point) => (
-        <div className="trend-column" key={point.date}>
-          <div className="trend-bars">
-            <span className="visit-bar" style={{ height: `${Math.max(8, (point.visits / maxValue) * 100)}%` }} />
-            <span className="lead-bar" style={{ height: `${Math.max(8, (point.leads / maxValue) * 100)}%` }} />
-          </div>
-          <small>{point.date}</small>
-        </div>
-      ))}
-    </div>
   );
 }
 

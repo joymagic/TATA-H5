@@ -58,13 +58,6 @@ export interface LeadRecord {
   channel: string;
 }
 
-export interface TrendPoint {
-  date: string;
-  visits: number;
-  starts: number;
-  leads: number;
-}
-
 export interface MetricValue {
   label: string;
   value: number;
@@ -78,8 +71,6 @@ export interface DistributionValue {
 
 export interface DashboardData {
   metrics: MetricValue[];
-  conversions: MetricValue[];
-  trend: TrendPoint[];
   personality: DistributionValue[];
   funnel: DistributionValue[];
   channel: DistributionValue[];
@@ -276,12 +267,6 @@ export function getDashboardData(session: AdminSession, filters: DashboardFilter
       metric("提交客资人数", leadCount, "成功提交客资"),
       metric("抽奖人数", lotteryUsers, "成功创建抽奖记录"),
     ],
-    conversions: [
-      metric("测试完成率", rate(completed, starts), "完成测试人数 / 开始测试人数"),
-      metric("客资转化率", rate(leadCount, resultViews), "提交客资人数 / 进入结果页人数"),
-      metric("抽奖参与率", rate(lotteryUsers, leadCount), "抽奖人数 / 提交客资人数"),
-    ],
-    trend: buildTrend(scopedLeads),
     personality: countBy(scopedLeads, (item) => item.personality, PERSONALITIES),
     funnel: [
       { label: "访问", value: visits },
@@ -320,10 +305,6 @@ export function maskPhone(phone: string) {
 
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("zh-CN").format(value);
-}
-
-export function formatPercent(value: number) {
-  return `${value}%`;
 }
 
 export function formatAmount(value: number) {
@@ -446,11 +427,6 @@ function metric(label: string, value: number, hint: string): MetricValue {
   return { label, value, hint };
 }
 
-function rate(numerator: number, denominator: number) {
-  if (denominator <= 0) return 0;
-  return Math.round((numerator / denominator) * 1000) / 10;
-}
-
 function isWithinDateRange(value: string, range: DateRange) {
   if (range === "all") return true;
   const date = parseAdminDate(value);
@@ -458,26 +434,6 @@ function isWithinDateRange(value: string, range: DateRange) {
   if (range === "today") return diffDays >= 0 && diffDays < 1;
   if (range === "last7") return diffDays >= 0 && diffDays < 7;
   return diffDays >= 0 && diffDays < 30;
-}
-
-function buildTrend(rows: LeadRecord[]): TrendPoint[] {
-  const labels = ["07-23", "07-24", "07-25", "07-26", "07-27", "07-28"];
-  const leadCounts = new Map<string, number>();
-  rows.forEach((row) => {
-    const label = row.submittedAt.slice(5, 10);
-    leadCounts.set(label, (leadCounts.get(label) ?? 0) + 1);
-  });
-
-  return labels.map((date, index) => {
-    const leads = leadCounts.get(date) ?? 0;
-    const baseline = (index + 3) * 28;
-    return {
-      date,
-      visits: leads ? leads * 7 + baseline : Math.round(baseline * 0.52),
-      starts: leads ? leads * 5 + Math.round(baseline * 0.42) : Math.round(baseline * 0.32),
-      leads,
-    };
-  });
 }
 
 function countBy<T>(rows: T[], pick: (row: T) => string, order: string[]): DistributionValue[] {
