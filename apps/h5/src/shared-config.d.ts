@@ -7,12 +7,24 @@ declare module "@tata/shared-config" {
     allowRepeatQuiz: boolean;
     allowRepeatLead: boolean;
     allowRepeatLottery: boolean;
+    activityPeriod: {
+      startAt: string;
+      endAt: string;
+      label: string;
+    };
     privacyPolicyUrl: string;
     shareUrl: string;
     mockCities: string[];
     lottery: {
-      defaultPrizeName: string;
-      poolSize: number;
+      drawChancePerUser: number;
+      enforceActivityPeriod: boolean;
+      identityScopes: string[];
+      prizeLevels: Array<{
+        code: string;
+        name: string;
+        total: number;
+        probability: number;
+      }>;
     };
   };
 

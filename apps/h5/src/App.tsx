@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ACTIVITY_CONFIG, ASSETS, H5_COPY, QUESTIONS } from "@tata/shared-config";
 import { audioEngine } from "./lib/audio";
 import { generatePoster } from "./lib/poster";
-import { mockApi } from "./services/mockApi";
+import { LotteryRuleError, mockApi } from "./services/mockApi";
 import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, Screen, SessionState } from "./types";
 
 const initialLead: LeadFormState = {
@@ -191,8 +191,14 @@ function App() {
         setScreen("lotteryResult");
         setIsDrawing(false);
       }, 900);
-    } catch {
-      setToast(H5_COPY.system.drawFailed);
+    } catch (error) {
+      if (error instanceof LotteryRuleError && error.code === "LEAD_REQUIRED") {
+        setToast(H5_COPY.system.drawLeadRequired);
+      } else if (error instanceof LotteryRuleError && error.code === "ACTIVITY_INACTIVE") {
+        setToast(H5_COPY.system.drawInactive);
+      } else {
+        setToast(H5_COPY.system.drawFailed);
+      }
       setIsDrawing(false);
     }
   }

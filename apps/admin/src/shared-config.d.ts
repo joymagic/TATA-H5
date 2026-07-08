@@ -23,3 +23,24 @@ declare module "@tata/shared-config/coupons" {
 
   export const COUPONS: CouponRecord[];
 }
+
+declare module "@tata/shared-config" {
+  export const ACTIVITY_CONFIG: {
+    activityPeriod: {
+      startAt: string;
+      endAt: string;
+      label: string;
+    };
+    lottery: {
+      drawChancePerUser: number;
+      enforceActivityPeriod: boolean;
+      identityScopes: string[];
+      prizeLevels: Array<{
+        code: string;
+        name: string;
+        total: number;
+        probability: number;
+      }>;
+    };
+  };
+}

@@ -28,11 +28,11 @@ import {
   CITIES,
   COUPON_BATCH,
   COUPON_EXPORT_PATH,
-  COUPON_SUMMARY,
   DEMO_ACCOUNTS,
   INITIAL_DASHBOARD_FILTERS,
   INITIAL_USER_FILTERS,
   PERSONALITIES,
+  PRIZE_LEVEL_CONFIGS,
   PRIZES,
   type AdminRole,
   type AdminSession,
@@ -42,15 +42,16 @@ import {
   type DistributionValue,
   type LeadRecord,
   type OperationLog,
+  type PrizeLevelConfig,
   type RuntimeConfig,
   type UserFilters,
   createIssuedCouponCsv,
   createLeadCsv,
   createOperationLog,
   downloadCsv,
-  formatAmount,
   formatNumber,
   formatPercent,
+  formatPrizeProbability,
   getCouponInventoryRows,
   getDashboardData,
   getIssuedCoupons,
@@ -58,12 +59,15 @@ import {
   getScopedLeads,
   loginWithMockAccount,
   maskPhone,
+  prizeNameForCouponAmount,
+  recalculatePrizeProbabilities,
   roleLabel,
   withRoleDefaults,
 } from "./adminData";
 
 const RUNTIME = getRuntimeConfig();
 const PAGE_SIZE = 8;
+const PRIZE_CONFIG_STORAGE_KEY = "tata-admin-prize-configs";
 
 const EMPTY_DASHBOARD: DashboardData = {
   metrics: [
@@ -86,11 +90,31 @@ const EMPTY_DASHBOARD: DashboardData = {
   city: [...CITIES].map((label) => ({ label, value: 0 })),
 };
 
+function readStoredPrizeConfigs(): PrizeLevelConfig[] {
+  try {
+    const raw = window.localStorage.getItem(PRIZE_CONFIG_STORAGE_KEY);
+    if (!raw) return PRIZE_LEVEL_CONFIGS;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return PRIZE_LEVEL_CONFIGS;
+    const merged = PRIZE_LEVEL_CONFIGS.map((defaults) => {
+      const stored = parsed.find((item) => item?.code === defaults.code);
+      return {
+        ...defaults,
+        total: Number.isFinite(Number(stored?.total)) ? Math.max(0, Number(stored.total)) : defaults.total,
+      };
+    });
+    return recalculatePrizeProbabilities(merged);
+  } catch {
+    return PRIZE_LEVEL_CONFIGS;
+  }
+}
+
 export function App() {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [view, setView] = useState<AdminView>("dashboard");
   const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(INITIAL_DASHBOARD_FILTERS);
   const [userFilters, setUserFilters] = useState<UserFilters>(INITIAL_USER_FILTERS);
+  const [prizeConfigs, setPrizeConfigs] = useState<PrizeLevelConfig[]>(() => readStoredPrizeConfigs());
   const [page, setPage] = useState(1);
   const [operationLogs, setOperationLogs] = useState<OperationLog[]>([]);
   const [disabledCodes, setDisabledCodes] = useState<Set<string>>(new Set());
@@ -142,6 +166,34 @@ export function App() {
     setUserFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_USER_FILTERS, city: activeSession.city } : INITIAL_USER_FILTERS);
     setPage(1);
     pushLog("筛选重置", "用户数据筛选已重置");
+  }
+
+  function updatePrizeTotal(code: string, total: number) {
+    if (activeSession.role !== "HEADQUARTERS_ADMIN") return;
+    setPrizeConfigs((configs) =>
+      recalculatePrizeProbabilities(
+        configs.map((config) => (config.code === code ? { ...config, total: Math.max(0, total) } : config))
+      )
+    );
+  }
+
+  function savePrizeConfigs() {
+    if (activeSession.role !== "HEADQUARTERS_ADMIN") {
+      pushLog("权限拦截", "城市 ADMIN 无权调整奖项配置");
+      return;
+    }
+    window.localStorage.setItem(PRIZE_CONFIG_STORAGE_KEY, JSON.stringify(prizeConfigs));
+    pushLog("保存奖项配置", "奖项数量配置已保存");
+  }
+
+  function resetPrizeConfigs() {
+    if (activeSession.role !== "HEADQUARTERS_ADMIN") {
+      pushLog("权限拦截", "城市 ADMIN 无权调整奖项配置");
+      return;
+    }
+    setPrizeConfigs(PRIZE_LEVEL_CONFIGS);
+    window.localStorage.removeItem(PRIZE_CONFIG_STORAGE_KEY);
+    pushLog("重置奖项配置", "奖项数量已恢复默认");
   }
 
   function exportDashboard() {
@@ -242,6 +294,7 @@ export function App() {
             issuedCoupons={issuedCoupons}
             page={page}
             pageCount={pageCount}
+            prizeConfigs={prizeConfigs}
             role={activeSession.role}
             session={activeSession}
             runtime={RUNTIME}
@@ -258,7 +311,10 @@ export function App() {
             onPageChange={setPage}
             onQuery={() => pushLog("查询用户数据", "用户数据筛选已更新")}
             onReset={resetUserFilters}
+            onResetPrizeConfigs={resetPrizeConfigs}
+            onSavePrizeConfigs={savePrizeConfigs}
             onSimulateCouponAction={simulateCouponAction}
+            onUpdatePrizeTotal={updatePrizeTotal}
           />
         )}
 
@@ -506,6 +562,7 @@ function UsersPanel({
   issuedCoupons,
   page,
   pageCount,
+  prizeConfigs,
   role,
   session,
   runtime,
@@ -519,13 +576,17 @@ function UsersPanel({
   onPageChange,
   onQuery,
   onReset,
+  onResetPrizeConfigs,
+  onSavePrizeConfigs,
   onSimulateCouponAction,
+  onUpdatePrizeTotal,
 }: {
   disabledCodes: Set<string>;
   filters: UserFilters;
   issuedCoupons: ReturnType<typeof getIssuedCoupons>;
   page: number;
   pageCount: number;
+  prizeConfigs: PrizeLevelConfig[];
   role: AdminRole;
   session: AdminSession;
   runtime: RuntimeConfig;
@@ -539,7 +600,10 @@ function UsersPanel({
   onPageChange: (page: number) => void;
   onQuery: () => void;
   onReset: () => void;
+  onResetPrizeConfigs: () => void;
+  onSavePrizeConfigs: () => void;
   onSimulateCouponAction: (action: string) => void;
+  onUpdatePrizeTotal: (code: string, total: number) => void;
 }) {
   const userStats = useMemo(() => {
     return [
@@ -569,16 +633,47 @@ function UsersPanel({
           <h2>券码池 {COUPON_BATCH.batchId}</h2>
         </div>
         <div className="coupon-tier-grid">
-          {COUPON_SUMMARY.map((tier) => {
-            const used = issuedCoupons.filter((coupon) => coupon.prize.startsWith(`${tier.amount}元`)).length;
+          {prizeConfigs.map((tier) => {
+            const used = issuedCoupons.filter((coupon) => coupon.prize === tier.name).length;
             return (
-              <article key={tier.amount}>
-                <span>{formatAmount(tier.amount)}</span>
-                <strong>{formatNumber(used)} / {formatNumber(tier.count)}</strong>
-                <small>已发放 / 总量</small>
+              <article key={tier.code}>
+                <span>{tier.name}</span>
+                <strong>{formatNumber(used)} / {formatNumber(tier.total)}</strong>
+                <small>已发放 / 总量 · 概率 {formatPrizeProbability(tier.probability)}</small>
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="toolbar-panel" aria-label="奖项数量配置">
+        {prizeConfigs.map((tier) => (
+          <label className="filter-field" key={tier.code}>
+            <span>{tier.name}数量</span>
+            <div className="input-shell">
+              <Ticket size={17} />
+              <input
+                aria-label={`${tier.name}数量`}
+                disabled={role !== "HEADQUARTERS_ADMIN"}
+                inputMode="numeric"
+                min={0}
+                step={1}
+                type="number"
+                value={tier.total}
+                onChange={(event) => onUpdatePrizeTotal(tier.code, Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+              />
+            </div>
+          </label>
+        ))}
+        <div className="toolbar-actions">
+          <button className="light-button" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={onResetPrizeConfigs}>
+            <RefreshCcw size={16} />
+            重置
+          </button>
+          <button className="primary-button compact" type="button" disabled={role !== "HEADQUARTERS_ADMIN"} onClick={onSavePrizeConfigs}>
+            <CheckCircle2 size={16} />
+            保存
+          </button>
         </div>
       </section>
 
@@ -719,7 +814,7 @@ function UsersPanel({
                       <tr key={coupon.code}>
                         <td>{coupon.id}</td>
                         <td className="code-cell">{coupon.code}</td>
-                        <td>{formatAmount(coupon.amount)} 代金券</td>
+                        <td>{prizeNameForCouponAmount(coupon.amount)}</td>
                         <td><span className={disabled ? "status-pill status-disabled" : "status-pill status-available"}>{disabled ? "已停用" : "可用"}</span></td>
                         <td>{coupon.batchId}</td>
                         <td>

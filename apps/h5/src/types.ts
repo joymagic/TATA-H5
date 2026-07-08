@@ -26,6 +26,7 @@ export interface QuizResult {
 export interface SessionState {
   sessionToken: string;
   anonymousId: string;
+  deviceId: string;
   activityId: string;
   channel: string;
   createdAt: string;
@@ -39,7 +40,10 @@ export interface LeadFormState {
 }
 
 export interface LotteryPrize {
+  prizeLevel: string;
   prizeName: string;
   couponCode: string;
   resultStatus: "WIN";
+  issuedAt: string;
+  expiresAt: string;
 }

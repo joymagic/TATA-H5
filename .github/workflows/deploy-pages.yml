@@ -36,6 +36,9 @@ jobs:
 
       - name: Build preview
         run: pnpm build:pages
+        env:
+          VITE_ADMIN_ENV: testing
+          VITE_ADMIN_DATA_SOURCE: mock
 
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v4

@@ -58,10 +58,10 @@ export const H5_COPY = {
   },
   lotteryResult: {
     title: "开始抽奖",
-    description: "点击转盘即可抽取专属代金券",
+    description: "点击转盘即可抽取专属奖券",
     resultLabel: "恭喜您，抽中幸运好礼",
     couponTip:
-      "本券码可在线下门店出示使用，请截图保存，妥善保管，券码一经使用即失效",
+      "到店下单签约后出示中奖券截图核销，请妥善保存，活动到期后自动失效",
     backHome: "返回首页",
   },
   system: {
@@ -69,6 +69,8 @@ export const H5_COPY = {
     shareInWechat: "请在微信内打开后使用分享功能",
     posterReady: "海报已生成，请长按图片保存",
     posterFailed: "海报生成失败，请稍后重试",
-    drawFailed: "提交失败，请稍后重试",
+    drawFailed: "抽奖失败，请稍后重试",
+    drawLeadRequired: "请先完成信息填写",
+    drawInactive: "活动不在有效期内",
   },
 };

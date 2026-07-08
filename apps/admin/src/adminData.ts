@@ -4,6 +4,7 @@ import {
   COUPONS,
   type CouponRecord,
 } from "@tata/shared-config/coupons";
+import { ACTIVITY_CONFIG } from "@tata/shared-config";
 
 export type AdminRole = "HEADQUARTERS_ADMIN" | "CITY_ADMIN";
 export type AdminView = "dashboard" | "users";
@@ -112,12 +113,26 @@ export interface RuntimeConfig {
   datasetNotice: string;
 }
 
-const MOCK_NOW = new Date("2026-07-06T22:00:00+08:00");
+export interface PrizeLevelConfig {
+  code: string;
+  name: string;
+  total: number;
+  probability: number;
+}
+
+const MOCK_NOW = new Date("2026-07-28T22:00:00+08:00");
 
 export const CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都"] as const;
 export const CHANNELS = ["门店二维码", "品牌公众号", "微信朋友圈", "微信群", "小红书"] as const;
 export const PERSONALITIES: Personality[] = ["悦己淡人", "沉浸领主", "觉主殿下", "头号玩家"];
-export const PRIZES = ["100元静音日代金券", "50元静音日代金券", "20元静音日代金券", "10元静音日代金券"];
+export const PRIZE_LEVEL_CONFIGS = recalculatePrizeProbabilities(ACTIVITY_CONFIG.lottery.prizeLevels);
+export const PRIZES = PRIZE_LEVEL_CONFIGS.map((prize) => prize.name);
+
+const COUPON_PRIZE_NAME_BY_AMOUNT = new Map(
+  [...COUPON_SUMMARY]
+    .sort((left, right) => right.amount - left.amount)
+    .map((tier, index) => [tier.amount, PRIZE_LEVEL_CONFIGS[index]?.name ?? PRIZES[PRIZES.length - 1] ?? "三等奖"])
+);
 
 export const COUPON_EXPORT_PATH = "./data/coupons.csv";
 
@@ -129,7 +144,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     displayName: "总部管理员",
     role: "HEADQUARTERS_ADMIN",
     city: "全国",
-    lastLoginAt: "2026-07-06 09:18",
+    lastLoginAt: "2026-07-28 09:18",
   },
   {
     id: "admin-sh-demo",
@@ -138,7 +153,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     displayName: "上海城市管理员",
     role: "CITY_ADMIN",
     city: "上海",
-    lastLoginAt: "2026-07-06 09:35",
+    lastLoginAt: "2026-07-28 09:35",
   },
 ];
 
@@ -158,30 +173,30 @@ export const INITIAL_USER_FILTERS: UserFilters = {
 };
 
 export const MOCK_LEADS: LeadRecord[] = [
-  lead("L20260706001", "2026-07-06 10:24", "林若安", "13812345678", "上海", "头号玩家", "IV", 29, "100元静音日代金券", 0, "门店二维码"),
-  lead("L20260706002", "2026-07-06 10:41", "陈知夏", "13922345678", "北京", "觉主殿下", "III", 23, "50元静音日代金券", 6, "品牌公众号"),
-  lead("L20260706003", "2026-07-06 11:02", "周念一", "13732345678", "广州", "沉浸领主", "II", 17, "20元静音日代金券", 22, "微信朋友圈"),
-  lead("L20260706004", "2026-07-06 11:28", "许言", "13642345678", "深圳", "悦己淡人", "I", 12, "10元静音日代金券", 31, "微信群"),
-  lead("L20260706005", "2026-07-06 12:09", "赵清和", "13552345678", "杭州", "头号玩家", "IV", 31, "50元静音日代金券", 41, "小红书"),
-  lead("L20260706006", "2026-07-06 13:17", "吴予白", "13462345678", "成都", "觉主殿下", "III", 22, "20元静音日代金券", 54, "门店二维码"),
-  lead("L20260706007", "2026-07-06 14:36", "郑小满", "13372345678", "上海", "沉浸领主", "II", 18, "10元静音日代金券", 69, "品牌公众号"),
-  lead("L20260706008", "2026-07-06 15:11", "王岚", "13282345678", "北京", "悦己淡人", "I", 11, "10元静音日代金券", 81, "微信朋友圈"),
-  lead("L20260705001", "2026-07-05 10:18", "刘沐", "13192345678", "广州", "头号玩家", "IV", 28, "20元静音日代金券", 96, "微信群"),
-  lead("L20260705002", "2026-07-05 11:43", "何嘉木", "15912345678", "深圳", "觉主殿下", "III", 21, "10元静音日代金券", 112, "门店二维码"),
-  lead("L20260705003", "2026-07-05 13:27", "马亦宁", "15822345678", "杭州", "沉浸领主", "II", 16, "50元静音日代金券", 124, "品牌公众号"),
-  lead("L20260705004", "2026-07-05 16:38", "宋可", "15732345678", "成都", "悦己淡人", "I", 10, "10元静音日代金券", 139, "小红书"),
-  lead("L20260704001", "2026-07-04 09:42", "唐柠", "15642345678", "上海", "觉主殿下", "III", 24, "20元静音日代金券", 151, "微信朋友圈"),
-  lead("L20260704002", "2026-07-04 11:05", "姜南", "15552345678", "北京", "头号玩家", "IV", 30, "100元静音日代金券", 169, "门店二维码"),
-  lead("L20260704003", "2026-07-04 14:52", "曹屿", "15462345678", "广州", "沉浸领主", "II", 15, "10元静音日代金券", 187, "品牌公众号"),
-  lead("L20260703001", "2026-07-03 10:33", "沈知微", "15372345678", "深圳", "悦己淡人", "I", 13, "10元静音日代金券", 205, "微信群"),
-  lead("L20260703002", "2026-07-03 13:09", "程方舟", "15282345678", "杭州", "觉主殿下", "III", 25, "20元静音日代金券", 223, "小红书"),
-  lead("L20260702001", "2026-07-02 09:54", "叶初", "15192345678", "成都", "头号玩家", "IV", 32, "50元静音日代金券", 241, "品牌公众号"),
-  lead("L20260702002", "2026-07-02 15:42", "韩书", "15012345678", "上海", "沉浸领主", "II", 19, "10元静音日代金券", 266, "门店二维码"),
-  lead("L20260701001", "2026-07-01 10:12", "魏棠", "14922345678", "北京", "悦己淡人", "I", 9, "10元静音日代金券", 301, "微信朋友圈"),
-  lead("L20260701002", "2026-07-01 17:05", "顾西洲", "14832345678", "广州", "觉主殿下", "III", 20, "20元静音日代金券", 318, "门店二维码"),
-  lead("L20260630001", "2026-06-30 11:31", "陆眠", "14742345678", "深圳", "头号玩家", "IV", 27, "50元静音日代金券", 336, "小红书"),
-  lead("L20260629001", "2026-06-29 16:20", "苏晚", "14652345678", "杭州", "沉浸领主", "II", 14, "10元静音日代金券", 351, "品牌公众号"),
-  lead("L20260628001", "2026-06-28 14:08", "钟予", "14562345678", "成都", "悦己淡人", "I", 8, "10元静音日代金券", 372, "微信群"),
+  lead("L20260706001", "2026-07-28 10:24", "林若安", "13812345678", "上海", "头号玩家", "IV", 29, "特等奖", 0, "门店二维码"),
+  lead("L20260706002", "2026-07-28 10:41", "陈知夏", "13922345678", "北京", "觉主殿下", "III", 23, "一等奖", 6, "品牌公众号"),
+  lead("L20260706003", "2026-07-28 11:02", "周念一", "13732345678", "广州", "沉浸领主", "II", 17, "二等奖", 22, "微信朋友圈"),
+  lead("L20260706004", "2026-07-28 11:28", "许言", "13642345678", "深圳", "悦己淡人", "I", 12, "三等奖", 31, "微信群"),
+  lead("L20260706005", "2026-07-28 12:09", "赵清和", "13552345678", "杭州", "头号玩家", "IV", 31, "一等奖", 41, "小红书"),
+  lead("L20260706006", "2026-07-28 13:17", "吴予白", "13462345678", "成都", "觉主殿下", "III", 22, "二等奖", 54, "门店二维码"),
+  lead("L20260706007", "2026-07-28 14:36", "郑小满", "13372345678", "上海", "沉浸领主", "II", 18, "三等奖", 69, "品牌公众号"),
+  lead("L20260706008", "2026-07-28 15:11", "王岚", "13282345678", "北京", "悦己淡人", "I", 11, "三等奖", 81, "微信朋友圈"),
+  lead("L20260705001", "2026-07-27 10:18", "刘沐", "13192345678", "广州", "头号玩家", "IV", 28, "二等奖", 96, "微信群"),
+  lead("L20260705002", "2026-07-27 11:43", "何嘉木", "15912345678", "深圳", "觉主殿下", "III", 21, "三等奖", 112, "门店二维码"),
+  lead("L20260705003", "2026-07-27 13:27", "马亦宁", "15822345678", "杭州", "沉浸领主", "II", 16, "一等奖", 124, "品牌公众号"),
+  lead("L20260705004", "2026-07-27 16:38", "宋可", "15732345678", "成都", "悦己淡人", "I", 10, "三等奖", 139, "小红书"),
+  lead("L20260704001", "2026-07-26 09:42", "唐柠", "15642345678", "上海", "觉主殿下", "III", 24, "二等奖", 151, "微信朋友圈"),
+  lead("L20260704002", "2026-07-26 11:05", "姜南", "15552345678", "北京", "头号玩家", "IV", 30, "特等奖", 169, "门店二维码"),
+  lead("L20260704003", "2026-07-26 14:52", "曹屿", "15462345678", "广州", "沉浸领主", "II", 15, "三等奖", 187, "品牌公众号"),
+  lead("L20260703001", "2026-07-25 10:33", "沈知微", "15372345678", "深圳", "悦己淡人", "I", 13, "三等奖", 205, "微信群"),
+  lead("L20260703002", "2026-07-25 13:09", "程方舟", "15282345678", "杭州", "觉主殿下", "III", 25, "二等奖", 223, "小红书"),
+  lead("L20260702001", "2026-07-24 09:54", "叶初", "15192345678", "成都", "头号玩家", "IV", 32, "一等奖", 241, "品牌公众号"),
+  lead("L20260702002", "2026-07-24 15:42", "韩书", "15012345678", "上海", "沉浸领主", "II", 19, "三等奖", 266, "门店二维码"),
+  lead("L20260701001", "2026-07-23 10:12", "魏棠", "14922345678", "北京", "悦己淡人", "I", 9, "三等奖", 301, "微信朋友圈"),
+  lead("L20260701002", "2026-07-23 17:05", "顾西洲", "14832345678", "广州", "觉主殿下", "III", 20, "二等奖", 318, "门店二维码"),
+  lead("L20260630001", "2026-07-23 11:31", "陆眠", "14742345678", "深圳", "头号玩家", "IV", 27, "一等奖", 336, "小红书"),
+  lead("L20260629001", "2026-07-24 16:20", "苏晚", "14652345678", "杭州", "沉浸领主", "II", 14, "三等奖", 351, "品牌公众号"),
+  lead("L20260628001", "2026-07-25 14:08", "钟予", "14562345678", "成都", "悦己淡人", "I", 8, "三等奖", 372, "微信群"),
 ];
 
 export function getRuntimeConfig(): RuntimeConfig {
@@ -189,9 +204,11 @@ export function getRuntimeConfig(): RuntimeConfig {
   const viteMode = (import.meta.env.MODE ?? "").toLowerCase();
   const env = normalizeRuntimeEnv(explicitEnv || (viteMode === "testing" ? "testing" : "development"));
   const configuredSource = (import.meta.env.VITE_ADMIN_DATA_SOURCE ?? "").toLowerCase();
-  const dataSource: DataSource = env === "development" && configuredSource !== "api" ? "mock" : "api";
+  const dataSource: DataSource =
+    configuredSource === "mock" ? "mock" : configuredSource === "api" ? "api" : env === "development" ? "mock" : "api";
   const useMockData = dataSource === "mock";
   const apiBaseUrl = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? "").replace(/\/$/, "");
+  const isTestingPreview = env === "testing" && useMockData;
 
   return {
     env,
@@ -199,8 +216,10 @@ export function getRuntimeConfig(): RuntimeConfig {
     dataSource,
     useMockData,
     apiBaseUrl,
-    datasetLabel: useMockData ? "开发演示数据" : "测试环境 API",
-    datasetNotice: useMockData
+    datasetLabel: isTestingPreview ? "测试预览数据" : useMockData ? "开发演示数据" : "测试环境 API",
+    datasetNotice: isTestingPreview
+      ? "当前为测试环境 Admin 预览页，使用 mock 数据便于验收。"
+      : useMockData
       ? "当前数据仅用于本地开发演示，不属于测试环境数据。"
       : "当前页面将从独立测试环境 API 读取数据，不加载本地 mock。配置 VITE_ADMIN_API_BASE_URL 后启用。",
   };
@@ -309,6 +328,24 @@ export function formatPercent(value: number) {
 
 export function formatAmount(value: number) {
   return `￥${formatNumber(value)}`;
+}
+
+export function formatPrizeProbability(value: number) {
+  const normalized = value < 1 ? value.toFixed(2) : value < 10 ? value.toFixed(1) : value.toFixed(2);
+  return `${normalized.replace(/\.?0+$/, "")}%`;
+}
+
+export function recalculatePrizeProbabilities(configs: PrizeLevelConfig[]): PrizeLevelConfig[] {
+  const totalCount = configs.reduce((total, prize) => total + Math.max(0, prize.total), 0);
+  return configs.map((prize) => ({
+    ...prize,
+    total: Math.max(0, prize.total),
+    probability: totalCount > 0 ? (Math.max(0, prize.total) / totalCount) * 100 : 0,
+  }));
+}
+
+export function prizeNameForCouponAmount(amount: number) {
+  return COUPON_PRIZE_NAME_BY_AMOUNT.get(amount) ?? PRIZES[PRIZES.length - 1] ?? "三等奖";
 }
 
 export function roleLabel(role: AdminRole) {
@@ -424,7 +461,7 @@ function isWithinDateRange(value: string, range: DateRange) {
 }
 
 function buildTrend(rows: LeadRecord[]): TrendPoint[] {
-  const labels = ["07-01", "07-02", "07-03", "07-04", "07-05", "07-06"];
+  const labels = ["07-23", "07-24", "07-25", "07-26", "07-27", "07-28"];
   const leadCounts = new Map<string, number>();
   rows.forEach((row) => {
     const label = row.submittedAt.slice(5, 10);
