@@ -1,0 +1,25 @@
+[Unit]
+Description=TATA FAT 1.0 API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/tata-h5/fat/repo
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=FAT_DB_PATH=/srv/tata-h5/fat/data/tata-fat.sqlite
+EnvironmentFile=-/etc/tata-fat-api.env
+ExecStart=/usr/bin/node /srv/tata-h5/fat/repo/apps/api/src/server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/srv/tata-h5/fat/data
+
+[Install]
+WantedBy=multi-user.target

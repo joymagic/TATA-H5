@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "build:fat": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026-fat-1.0 VITE_ENV_LABEL='FAT ENV' VITE_SHARE_URL=https://fat-tata.cdsparkling.cn/ vite build --mode fat --outDir dist/fat",
+    "build:fat": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026-fat-1.0 VITE_ENV_LABEL='FAT ENV' VITE_SHARE_URL=https://fat-tata.cdbzzy.cn/ VITE_H5_DATA_SOURCE=api VITE_H5_API_BASE_URL= vite build --mode fat --outDir dist/fat",
     "build:testing": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026-test VITE_ENV_LABEL='TEST ENV' VITE_SHARE_URL=https://tata-test.cdsparkling.cn/ vite build --mode testing --outDir dist/testing",
     "build:production": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026 VITE_ENV_LABEL='PROD ENV' VITE_SHARE_URL=https://tata.cdsparkling.cn/ vite build --mode production --outDir dist/production",
     "typecheck": "tsc --noEmit",

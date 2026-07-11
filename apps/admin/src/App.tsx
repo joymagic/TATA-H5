@@ -22,7 +22,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   CHANNELS,
   CITIES,
@@ -112,6 +112,44 @@ export function App() {
   const [operationLogs, setOperationLogs] = useState<OperationLog[]>([]);
   const [disabledCodes, setDisabledCodes] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
+  const [apiDashboard, setApiDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
+  const [apiLeads, setApiLeads] = useState<LeadRecord[]>([]);
+  const [apiCouponInventory, setApiCouponInventory] = useState<ReturnType<typeof getCouponInventoryRows>>([]);
+  const [apiStatus, setApiStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [apiRefreshKey, setApiRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!session || RUNTIME.useMockData) {
+      setApiStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setApiStatus("loading");
+    fetch(apiUrl("/api/v1/admin/snapshot"), { credentials: "include" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          setSession(null);
+          throw new Error("unauthorized");
+        }
+        if (!response.ok) throw new Error("snapshot failed");
+        return response.json();
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        const data = payload?.data ?? {};
+        setApiDashboard(data.dashboard ?? EMPTY_DASHBOARD);
+        setApiLeads(Array.isArray(data.leads) ? data.leads : []);
+        setApiCouponInventory(Array.isArray(data.couponInventory) ? data.couponInventory : []);
+        if (Array.isArray(data.prizeConfigs)) setPrizeConfigs(recalculatePrizeProbabilities(data.prizeConfigs));
+        setApiStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setApiStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, apiRefreshKey]);
 
   function pushLog(action: string, detail: string, operator = session?.displayName ?? "未登录") {
     const nextLog = createOperationLog(action, detail, operator);
@@ -121,9 +159,9 @@ export function App() {
   }
 
   async function handleLogout() {
-    if (!RUNTIME.useMockData && RUNTIME.apiBaseUrl) {
+    if (!RUNTIME.useMockData) {
       try {
-        await fetch(`${RUNTIME.apiBaseUrl}/api/v1/admin/auth/logout`, {
+        await fetch(apiUrl("/api/v1/admin/auth/logout"), {
           method: "POST",
           credentials: "include",
         });
@@ -143,10 +181,10 @@ export function App() {
 
   const activeSession = session;
   const scopedDashboardFilters = withRoleDefaults(activeSession, dashboardFilters);
-  const dashboardData = RUNTIME.useMockData ? getDashboardData(activeSession, scopedDashboardFilters) : EMPTY_DASHBOARD;
+  const dashboardData = RUNTIME.useMockData ? getDashboardData(activeSession, scopedDashboardFilters) : apiDashboard;
   const scopedUserFilters = activeSession.role === "CITY_ADMIN" ? { ...userFilters, city: activeSession.city } : userFilters;
-  const users = RUNTIME.useMockData ? getScopedLeads(activeSession, scopedUserFilters) : [];
-  const issuedCoupons = RUNTIME.useMockData ? getIssuedCoupons(activeSession, scopedUserFilters) : [];
+  const users = getScopedLeads(activeSession, scopedUserFilters, RUNTIME.useMockData ? undefined : apiLeads);
+  const issuedCoupons = getIssuedCoupons(activeSession, scopedUserFilters, RUNTIME.useMockData ? undefined : apiLeads);
   const pageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const visibleUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -267,7 +305,7 @@ export function App() {
           </div>
         </header>
 
-        {!RUNTIME.useMockData ? <ApiNotice runtime={RUNTIME} /> : null}
+        {!RUNTIME.useMockData ? <ApiNotice runtime={RUNTIME} status={apiStatus} /> : null}
 
         {view === "dashboard" ? (
           <DashboardPanel
@@ -276,12 +314,16 @@ export function App() {
             role={activeSession.role}
             onExport={exportDashboard}
             onFiltersChange={(filters) => setDashboardFilters(withRoleDefaults(activeSession, filters))}
-            onQuery={() => pushLog("查询活动看板", "数据看板筛选已更新")}
+            onQuery={() => {
+              setApiRefreshKey((value) => value + 1);
+              pushLog("查询活动看板", "已刷新 FAT 测试数据库");
+            }}
             onReset={resetDashboardFilters}
           />
         ) : (
           <UsersPanel
             disabledCodes={disabledCodes}
+            couponInventory={apiCouponInventory}
             filters={scopedUserFilters}
             issuedCoupons={issuedCoupons}
             page={page}
@@ -301,7 +343,10 @@ export function App() {
               setPage(1);
             }}
             onPageChange={setPage}
-            onQuery={() => pushLog("查询用户数据", "用户数据筛选已更新")}
+            onQuery={() => {
+              setApiRefreshKey((value) => value + 1);
+              pushLog("查询用户数据", "已刷新 FAT 测试数据库");
+            }}
             onReset={resetUserFilters}
             onResetPrizeConfigs={resetPrizeConfigs}
             onSavePrizeConfigs={savePrizeConfigs}
@@ -318,8 +363,8 @@ export function App() {
 }
 
 function LoginScreen({ runtime, onLogin }: { runtime: RuntimeConfig; onLogin: (session: AdminSession) => void }) {
-  const [username, setUsername] = useState(runtime.useMockData ? DEMO_ACCOUNTS[0].username : "");
-  const [password, setPassword] = useState(runtime.useMockData ? DEMO_ACCOUNTS[0].password : "");
+  const [username, setUsername] = useState(runtime.useMockData || runtime.env === "fat" ? DEMO_ACCOUNTS[0].username : "");
+  const [password, setPassword] = useState(runtime.useMockData || runtime.env === "fat" ? DEMO_ACCOUNTS[0].password : "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -342,14 +387,8 @@ function LoginScreen({ runtime, onLogin }: { runtime: RuntimeConfig; onLogin: (s
       return;
     }
 
-    if (!runtime.apiBaseUrl) {
-      setError("登录失败，请稍后重试");
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const response = await fetch(`${runtime.apiBaseUrl}/api/v1/admin/auth/login`, {
+      const response = await fetch(apiUrl("/api/v1/admin/auth/login"), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -419,8 +458,8 @@ function LoginScreen({ runtime, onLogin }: { runtime: RuntimeConfig; onLogin: (s
           </div>
         ) : (
           <div className="api-login-note">
-            <AlertTriangle size={17} />
-            测试环境需配置独立 Admin API，开发演示账号不会在此启用。
+            <CheckCircle2 size={17} />
+            FAT Admin 已连接独立测试 API，演示账号仅用于本次联调。
           </div>
         )}
       </section>
@@ -434,18 +473,18 @@ function RuntimeCard({ runtime }: { runtime: RuntimeConfig }) {
       <span>{runtime.datasetLabel}</span>
       <strong>{runtime.dataSource === "mock" ? "Mock" : "API"}</strong>
       <p>{runtime.datasetNotice}</p>
-      {runtime.apiBaseUrl ? <small>{runtime.apiBaseUrl}</small> : <small>API 未配置</small>}
+      <small>{runtime.apiBaseUrl || "同源 /api"}</small>
     </div>
   );
 }
 
-function ApiNotice({ runtime }: { runtime: RuntimeConfig }) {
+function ApiNotice({ runtime, status }: { runtime: RuntimeConfig; status: "idle" | "loading" | "ready" | "error" }) {
   return (
     <section className="api-notice">
-      <AlertTriangle size={18} />
+      {status === "error" ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
       <div>
-        <strong>测试环境数据未使用本地 mock</strong>
-        <p>{runtime.apiBaseUrl ? `当前 API：${runtime.apiBaseUrl}` : "请在 .env.testing 中配置 VITE_ADMIN_API_BASE_URL。"}</p>
+        <strong>{status === "loading" ? "正在读取 FAT 测试数据库" : status === "error" ? "FAT API 暂时不可用" : "FAT API 与测试数据库已连接"}</strong>
+        <p>当前 API：{runtime.apiBaseUrl || "同源 /api"}，H5 新提交将在刷新后显示。</p>
       </div>
     </section>
   );
@@ -536,6 +575,7 @@ function DashboardPanel({
 }
 
 function UsersPanel({
+  couponInventory,
   disabledCodes,
   filters,
   issuedCoupons,
@@ -560,6 +600,7 @@ function UsersPanel({
   onSimulateCouponAction,
   onUpdatePrizeTotal,
 }: {
+  couponInventory: ReturnType<typeof getCouponInventoryRows>;
   disabledCodes: Set<string>;
   filters: UserFilters;
   issuedCoupons: ReturnType<typeof getIssuedCoupons>;
@@ -594,7 +635,10 @@ function UsersPanel({
       })),
     ];
   }, [users]);
-  const inventoryRows = useMemo(() => getCouponInventoryRows(session, disabledCodes), [disabledCodes, session]);
+  const inventoryRows = useMemo(
+    () => runtime.useMockData ? getCouponInventoryRows(session, disabledCodes) : couponInventory,
+    [couponInventory, disabledCodes, runtime.useMockData, session]
+  );
 
   return (
     <div className="stack">
@@ -704,7 +748,7 @@ function UsersPanel({
             <Search size={16} />
             查询
           </button>
-          <button className="dark-button" type="button" onClick={onExportUsers} disabled={!runtime.useMockData}>
+          <button className="dark-button" type="button" onClick={onExportUsers}>
             <FileDown size={16} />
             导出用户表
           </button>
@@ -982,4 +1026,8 @@ function toApiSession(payload: unknown): AdminSession {
     city: String(data.city ?? data.cityName ?? (role === "CITY_ADMIN" ? "所属城市" : "全国")),
     lastLoginAt: String(data.lastLoginAt ?? ""),
   };
+}
+
+function apiUrl(path: string) {
+  return `${RUNTIME.apiBaseUrl}${path}`;
 }

@@ -201,6 +201,7 @@ export function getRuntimeConfig(): RuntimeConfig {
   const apiBaseUrl = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? "").replace(/\/$/, "");
   const isTestingPreview = env === "testing" && useMockData;
   const isFatPreview = env === "fat" && useMockData;
+  const isFatApi = env === "fat" && !useMockData;
   const isProductionPreview = env === "production" && useMockData;
 
   return {
@@ -209,7 +210,9 @@ export function getRuntimeConfig(): RuntimeConfig {
     dataSource,
     useMockData,
     apiBaseUrl,
-    datasetLabel: isFatPreview
+    datasetLabel: isFatApi
+      ? "FAT 1.0 实时测试数据"
+      : isFatPreview
       ? "FAT 1.0 测试数据"
       : isTestingPreview
       ? "测试预览数据"
@@ -218,7 +221,9 @@ export function getRuntimeConfig(): RuntimeConfig {
       : useMockData
       ? "开发演示数据"
       : "测试环境 API",
-    datasetNotice: isFatPreview
+    datasetNotice: isFatApi
+      ? "当前 H5 与 Admin 共用独立 FAT API 和测试数据库，数据实时同步。"
+      : isFatPreview
       ? "当前为 FAT 1.0 测试环境 Admin，使用独立 mock 数据验收。"
       : isTestingPreview
       ? "当前为测试环境 Admin 预览页，使用 mock 数据便于验收。"
@@ -242,14 +247,19 @@ export function withRoleDefaults(session: AdminSession, filters: DashboardFilter
   return filters;
 }
 
-export function getScopedLeads(session: AdminSession, filters: UserFilters | DashboardFilters): LeadRecord[] {
-  return MOCK_LEADS.filter((leadItem) => {
+export function getScopedLeads(
+  session: AdminSession,
+  filters: UserFilters | DashboardFilters,
+  sourceLeads: LeadRecord[] = MOCK_LEADS
+): LeadRecord[] {
+  const referenceNow = sourceLeads === MOCK_LEADS ? MOCK_NOW : new Date();
+  return sourceLeads.filter((leadItem) => {
     if (session.role === "CITY_ADMIN" && leadItem.city !== session.city) return false;
     if ("city" in filters && filters.city !== "all" && leadItem.city !== filters.city) return false;
     if ("personality" in filters && filters.personality !== "all" && leadItem.personality !== filters.personality) return false;
     if ("channel" in filters && filters.channel !== "all" && leadItem.channel !== filters.channel) return false;
     if ("prize" in filters && filters.prize !== "all" && leadItem.prize !== filters.prize) return false;
-    if (!isWithinDateRange(leadItem.submittedAt, filters.dateRange)) return false;
+    if (!isWithinDateRange(leadItem.submittedAt, filters.dateRange, referenceNow)) return false;
     if ("keyword" in filters) {
       const keyword = filters.keyword.trim().toLowerCase();
       if (!keyword) return true;
@@ -263,8 +273,8 @@ export function getScopedLeads(session: AdminSession, filters: UserFilters | Das
   });
 }
 
-export function getDashboardData(session: AdminSession, filters: DashboardFilters): DashboardData {
-  const scopedLeads = getScopedLeads(session, withRoleDefaults(session, filters));
+export function getDashboardData(session: AdminSession, filters: DashboardFilters, sourceLeads: LeadRecord[] = MOCK_LEADS): DashboardData {
+  const scopedLeads = getScopedLeads(session, withRoleDefaults(session, filters), sourceLeads);
   const leadCount = scopedLeads.length;
   const visits = Math.max(leadCount * 7 + 128, leadCount);
   const starts = Math.max(leadCount * 5 + 36, leadCount);
@@ -295,8 +305,8 @@ export function getDashboardData(session: AdminSession, filters: DashboardFilter
   };
 }
 
-export function getIssuedCoupons(session: AdminSession, filters: UserFilters): IssuedCouponRecord[] {
-  return getScopedLeads(session, filters).map((item) => ({
+export function getIssuedCoupons(session: AdminSession, filters: UserFilters, sourceLeads: LeadRecord[] = MOCK_LEADS): IssuedCouponRecord[] {
+  return getScopedLeads(session, filters, sourceLeads).filter((item) => item.couponCode && item.couponCode !== "—").map((item) => ({
     code: item.couponCode,
     prize: item.prize,
     status: "已发放",
@@ -442,10 +452,10 @@ function metric(label: string, value: number, hint: string): MetricValue {
   return { label, value, hint };
 }
 
-function isWithinDateRange(value: string, range: DateRange) {
+function isWithinDateRange(value: string, range: DateRange, referenceNow = MOCK_NOW) {
   if (range === "all") return true;
   const date = parseAdminDate(value);
-  const diffDays = (MOCK_NOW.getTime() - date.getTime()) / 86400000;
+  const diffDays = (referenceNow.getTime() - date.getTime()) / 86400000;
   if (range === "today") return diffDays >= 0 && diffDays < 1;
   if (range === "last7") return diffDays >= 0 && diffDays < 7;
   return diffDays >= 0 && diffDays < 30;

@@ -1136,7 +1136,7 @@ button:disabled {
 
 .rules-modal {
   width: min(100%, 390px);
-  max-height: min(76dvh, 560px);
+  max-height: min(82dvh, 680px);
   overflow: auto;
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.68);
@@ -1165,8 +1165,9 @@ button:disabled {
 .rules-modal-header h2 {
   margin: 0;
   color: var(--ink-strong);
-  font-size: 22px;
-  line-height: 1.2;
+  max-width: 280px;
+  font-size: 19px;
+  line-height: 1.35;
 }
 
 .rules-close {
@@ -1218,6 +1219,10 @@ button:disabled {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.65;
+}
+
+.rules-item p + p {
+  margin-top: 8px;
 }
 
 @media (prefers-reduced-motion: no-preference) {

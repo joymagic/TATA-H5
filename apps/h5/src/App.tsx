@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ACTIVITY_CONFIG, ASSETS, H5_COPY, QUESTIONS } from "@tata/shared-config";
 import { audioEngine } from "./lib/audio";
 import { generatePoster } from "./lib/poster";
-import { LotteryRuleError, mockApi } from "./services/mockApi";
+import { LotteryRuleError, activityApi } from "./services/api";
 import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, Screen, SessionState } from "./types";
 
 const initialLead: LeadFormState = {
@@ -52,7 +52,7 @@ function App() {
         if (next >= 100) {
           window.clearInterval(timer);
           window.setTimeout(async () => {
-            const nextSession = await mockApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct");
+            const nextSession = await activityApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct");
             setSession(nextSession);
             setScreen("home");
           }, 260);
@@ -115,7 +115,7 @@ function App() {
       setResultError(false);
       audioEngine.play("scan");
       try {
-        const nextResult = await mockApi.submitQuiz(nextAnswers);
+        const nextResult = await activityApi.submitQuiz(nextAnswers);
         setResult(nextResult);
         audioEngine.play("reveal");
         setScreen("result");
@@ -130,7 +130,7 @@ function App() {
     setScreen("resultLoading");
     setResultError(false);
     try {
-      const nextResult = await mockApi.submitQuiz(answers);
+      const nextResult = await activityApi.submitQuiz(answers);
       setResult(nextResult);
       setScreen("result");
     } catch {
@@ -171,7 +171,7 @@ function App() {
     if (error) return;
     setIsSubmittingLead(true);
     try {
-      await mockApi.submitLead(lead);
+      await activityApi.submitLead(lead);
       setScreen("lottery");
     } catch {
       setValidation(H5_COPY.lead.validation.submitFailed);
@@ -186,7 +186,7 @@ function App() {
     setIsDrawing(true);
     setWheelRotation((rotation) => rotation + 1440 + 45);
     try {
-      const nextPrize = await mockApi.drawLottery(`${session?.sessionToken ?? "session"}-${Date.now()}`);
+      const nextPrize = await activityApi.drawLottery(`${session?.sessionToken ?? "session"}-${Date.now()}`);
       setPrize(nextPrize);
       window.setTimeout(() => {
         audioEngine.play("win");
@@ -207,8 +207,8 @@ function App() {
 
   async function backHome() {
     audioEngine.play("tap");
-    mockApi.clearFlow();
-    const nextSession = await mockApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct");
+    activityApi.clearFlow();
+    const nextSession = await activityApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct");
     setSession(nextSession);
     setQuestionIndex(0);
     setAnswers([]);
@@ -355,7 +355,7 @@ function ActivityRulesModal({ onClose }: { onClose: () => void }) {
       >
         <header className="rules-modal-header">
           <div>
-            <span className="rules-eyebrow">TATA 静音人格测试</span>
+            <span className="rules-eyebrow">{H5_COPY.rules.brand}</span>
             <h2 id="activity-rules-title">{H5_COPY.rules.title}</h2>
           </div>
           <button className="rules-close" type="button" onClick={onClose} aria-label="关闭活动规则">
@@ -363,12 +363,12 @@ function ActivityRulesModal({ onClose }: { onClose: () => void }) {
           </button>
         </header>
         <div className="rules-list">
-          {H5_COPY.rules.items.map((item, index) => (
-            <article className="rules-item" key={item.label}>
+          {H5_COPY.rules.sections.map((section, index) => (
+            <article className="rules-item" key={section.title}>
               <span className="rules-index">{String(index + 1).padStart(2, "0")}</span>
               <div>
-                <strong>{item.label}</strong>
-                <p>{item.text}</p>
+                <strong>{section.title}</strong>
+                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
               </div>
             </article>
           ))}

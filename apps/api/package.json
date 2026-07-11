@@ -1,0 +1,10 @@
+{
+  "name": "@tata/api",
+  "private": true,
+  "version": "1.0.0-fat",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/api.test.mjs"
+  }
+}

@@ -41,7 +41,8 @@ declare module "@tata/shared-config" {
     home: { titleLines: string[]; startButton: string };
     rules: {
       title: string;
-      items: Array<{ label: string; text: string }>;
+      brand: string;
+      sections: Array<{ title: string; paragraphs: string[] }>;
     };
     resultLoading: { titleLines: string[]; error: string; retry: string };
     result: { cta: string; shareButtons: string[] };
