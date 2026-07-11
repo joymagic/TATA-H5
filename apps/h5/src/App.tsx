@@ -249,7 +249,9 @@ function App() {
             onSelect={selectAnswer}
           />
         )}
-        {screen === "resultLoading" && <ResultLoadingScreen hasError={resultError} onRetry={retryResult} />}
+        {screen === "resultLoading" && (
+          <ResultLoadingScreen hasError={resultError} onBack={() => setScreen("quiz")} onRetry={retryResult} />
+        )}
         {screen === "result" && activeResult && (
           <ResultScreen
             result={activeResult}
@@ -295,17 +297,18 @@ function App() {
 
 function LoadingScreen({ progress }: { progress: number }) {
   return (
-    <section className="screen loading-screen">
-      <BrandHeader />
-      <div className="loading-orbit" aria-hidden="true">
-        <div className="quiet-door loading-door">
-          <div className="door-inner">TATA</div>
-        </div>
+    <section className="screen figma-screen figma-loading-screen">
+      <img className="figma-bg" src="/assets/figma/figma-loading-bg.png" alt="" aria-hidden="true" />
+      <img className="figma-loading-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
+      <div className="figma-waveform" aria-hidden="true">
+        {Array.from({ length: 30 }).map((_, index) => (
+          <i key={index} style={{ height: `${5 + ((index * 11) % 34)}px` }} />
+        ))}
       </div>
-      <div className="progress-track">
+      <div className="figma-progress-track">
         <span style={{ width: `${progress}%` }} />
       </div>
-      <p className="loading-percent">加载中 {progress}%</p>
+      <p className="figma-loading-percent">{progress}%</p>
     </section>
   );
 }
@@ -322,23 +325,31 @@ function HomeScreen({
   onStart: () => void;
 }) {
   return (
-    <section className="screen home-screen">
-      <BrandHeader />
-      <button className="rules-button" type="button" onClick={onRules}>
-        活动规则
-      </button>
-      <button className="icon-button music-button" type="button" onClick={onAudioToggle} aria-label="音乐开关">
-        {audioEnabled ? <Music2 size={20} /> : <VolumeX size={20} />}
-      </button>
-      <div className="home-scene">
-        <img className="home-kv" src={ASSETS.silentSpaceHero} alt="" aria-hidden="true" />
-        <img className="silent-day-mark" src={ASSETS.silentDayIcon} alt="" aria-hidden="true" />
+    <section className="screen figma-screen figma-home-screen">
+      <img className="figma-bg" src="/assets/figma/figma-home-bg.png" alt="" aria-hidden="true" />
+      <img className="figma-home-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
+      <div className="figma-home-actions">
+        <button type="button" onClick={onAudioToggle} aria-label="背景音乐开关">
+          {audioEnabled ? <Music2 size={13} /> : <VolumeX size={13} />}
+          <span>背景音乐</span>
+        </button>
+        <button type="button" onClick={onRules}>
+          <Music size={13} />
+          <span>活动规则</span>
+        </button>
       </div>
-      <div className="hero-title">
-        <span>{H5_COPY.home.titleLines[0]}</span>
-        <strong>{H5_COPY.home.titleLines[1]}</strong>
+      <div className="figma-home-copy">
+        <h1>
+          测测你的<span>宅家人格</span>
+          <br />
+          <strong>静化</strong>到哪一级了
+        </h1>
+        <p>5道题，找到你的宅家人格<br />并匹配你所需要的静音等级</p>
       </div>
-      <PrimaryButton onClick={onStart}>{H5_COPY.home.startButton}</PrimaryButton>
+      <button className="figma-primary-button figma-home-cta" type="button" onClick={onStart}>
+        <span>{H5_COPY.home.startButton}</span>
+        <b aria-hidden="true">›</b>
+      </button>
     </section>
   );
 }
@@ -392,30 +403,33 @@ function QuizScreen({
   onSelect: (answer: OptionKey) => void;
 }) {
   return (
-    <section className="screen quiz-screen">
-      <button className="back-button" type="button" onClick={onBack} aria-label="返回">
-        <ArrowLeft size={20} />
+    <section className="screen figma-screen figma-quiz-screen">
+      <img className="figma-bg" src="/assets/figma/figma-quiz-bg.png" alt="" aria-hidden="true" />
+      <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
+        <img src="/assets/figma/figma-back.png" alt="" />
       </button>
-      <div className="quiz-progress">
+      <div className="figma-quiz-count">
         <strong>{String(questionIndex + 1).padStart(2, "0")}</strong>
-        <span>/ 05</span>
+        <span>/</span><small>05</small>
       </div>
-      <div className="energy-bar" aria-hidden="true">
-        {QUESTIONS.map((item, index) => (
-          <i key={item.no} className={index <= questionIndex ? "is-active" : ""} />
-        ))}
+      <div className="figma-quiz-progress" aria-hidden="true">
+        <span>{String(questionIndex + 1).padStart(2, "0")}</span>
+        <i><b style={{ width: `${((questionIndex + 1) / QUESTIONS.length) * 100}%` }} /></i>
+        <span>05</span>
       </div>
-      <h1 className="question-title">{question.title}</h1>
-      <div className="option-list">
+      <img className="figma-quiz-visual" src="/assets/figma/figma-quiz-visual.png" alt="居家静音场景" />
+      <h1 className="figma-question-title">{question.title}</h1>
+      <div className="figma-option-list">
         {question.options.map((option) => (
           <button
             key={option.key}
-            className={`option-button ${answer === option.key ? "is-selected" : ""}`}
+            className={`figma-option-button ${answer === option.key ? "is-selected" : ""}`}
             type="button"
             onClick={() => onSelect(option.key as OptionKey)}
           >
             <strong>{option.key}</strong>
             <span>{option.text}</span>
+            <i aria-hidden="true">{answer === option.key ? <Check size={15} strokeWidth={3} /> : null}</i>
           </button>
         ))}
       </div>
@@ -423,21 +437,23 @@ function QuizScreen({
   );
 }
 
-function ResultLoadingScreen({ hasError, onRetry }: { hasError: boolean; onRetry: () => void }) {
+function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean; onBack: () => void; onRetry: () => void }) {
   return (
-    <section className="screen result-loading-screen">
-      <div className="result-loading-title">
-        <span>{H5_COPY.resultLoading.titleLines[0]}</span>
-        <strong>{H5_COPY.resultLoading.titleLines[1]}</strong>
+    <section className="screen figma-screen figma-result-loading-screen">
+      <img className="figma-bg" src="/assets/figma/figma-result-loading-bg.png" alt="" aria-hidden="true" />
+      <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
+        <img src="/assets/figma/figma-back.png" alt="" />
+      </button>
+      <div className="figma-result-loading-copy">
+        <small>ANALYZING</small>
+        <h1>宅家人格<br /><strong>静化</strong>报告生成中</h1>
       </div>
-      <div className="hex-door" aria-hidden="true">
-        <div className="quiet-door compact-door">
-          <div className="door-inner" />
-        </div>
+      <div className="figma-waveform figma-result-waveform" aria-hidden="true">
+        {Array.from({ length: 30 }).map((_, index) => <i key={index} style={{ height: `${5 + ((index * 11) % 34)}px` }} />)}
       </div>
-      <div className="wave-line" aria-hidden="true" />
+      <img className="figma-analysis-panel" src="/assets/figma/figma-analysis-panel.png" alt="分析答题数据、识别宅家人格、匹配静音等级、生成专属报告" />
       {hasError && (
-        <button className="ghost-action" type="button" onClick={onRetry}>
+        <button className="ghost-action figma-retry" type="button" onClick={onRetry}>
           <RotateCcw size={16} />
           {H5_COPY.resultLoading.retry}
         </button>
@@ -501,58 +517,60 @@ function LeadScreen({
   onSubmit: () => void;
 }) {
   return (
-    <section className="screen lead-screen">
-      <button className="back-button" type="button" onClick={onBack} aria-label="返回">
-        <ArrowLeft size={20} />
+    <section className="screen figma-screen figma-lead-screen" data-result-hint={hint}>
+      <img className="figma-bg" src="/assets/figma/figma-lead-bg.png" alt="" aria-hidden="true" />
+      <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
+        <img src="/assets/figma/figma-back.png" alt="" />
       </button>
-      <h1 className="split-title">
-        <span>{H5_COPY.lead.title}</span>
-      </h1>
-      <p className="lead-hint">{hint}</p>
-      <p className="lead-description">{H5_COPY.lead.description}</p>
-      <div className="form-stack">
-        <Field label={H5_COPY.lead.fields.name.label}>
+      <div className="figma-lead-card">
+        <div className="figma-lead-intro">
+          <p>TATA 木门深度参编行业标准《室内木质隔声门》LY/T3134-2019，依托专业隔声数值，建立四级静音分级体系，完整覆盖茶室、书房、卧室、电竞房等全生活场景。</p>
+          <strong>填写您的基础信息，参与抽奖，即可获得美好人居<span>大奖</span></strong>
+        </div>
+        <div className="figma-form-stack">
+          <Field label={H5_COPY.lead.fields.name.label}>
+            <input
+              value={lead.name}
+              placeholder={H5_COPY.lead.fields.name.placeholder}
+              onChange={(event) => onChange({ ...lead, name: event.target.value })}
+            />
+          </Field>
+          <Field label={H5_COPY.lead.fields.phone.label}>
+            <input
+              inputMode="numeric"
+              maxLength={11}
+              value={lead.phone}
+              placeholder={H5_COPY.lead.fields.phone.placeholder}
+              onChange={(event) => onChange({ ...lead, phone: event.target.value.replace(/\D/g, "") })}
+            />
+          </Field>
+          <Field label={H5_COPY.lead.fields.city.label}>
+            <div className="select-wrap">
+              <select value={lead.city} onChange={(event) => onChange({ ...lead, city: event.target.value })}>
+                <option value="">{H5_COPY.lead.fields.city.placeholder}</option>
+                {ACTIVITY_CONFIG.mockCities.map((city) => (
+                  <option value={city} key={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={18} />
+            </div>
+          </Field>
+        </div>
+        <label className="figma-privacy-row">
           <input
-            value={lead.name}
-            placeholder={H5_COPY.lead.fields.name.placeholder}
-            onChange={(event) => onChange({ ...lead, name: event.target.value })}
+            type="checkbox"
+            checked={lead.privacyConsent}
+            onChange={(event) => onChange({ ...lead, privacyConsent: event.target.checked })}
           />
-        </Field>
-        <Field label={H5_COPY.lead.fields.phone.label}>
-          <input
-            inputMode="numeric"
-            maxLength={11}
-            value={lead.phone}
-            placeholder={H5_COPY.lead.fields.phone.placeholder}
-            onChange={(event) => onChange({ ...lead, phone: event.target.value.replace(/\D/g, "") })}
-          />
-        </Field>
-        <Field label={H5_COPY.lead.fields.city.label}>
-          <div className="select-wrap">
-            <select value={lead.city} onChange={(event) => onChange({ ...lead, city: event.target.value })}>
-              <option value="">{H5_COPY.lead.fields.city.placeholder}</option>
-              {ACTIVITY_CONFIG.mockCities.map((city) => (
-                <option value={city} key={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={18} />
-          </div>
-        </Field>
+          <span>{H5_COPY.lead.privacy}</span>
+        </label>
+        {validation && <p className="validation-message">{validation}</p>}
+        <button className="figma-submit-button" disabled={!lead.privacyConsent || isSubmitting} type="button" onClick={onSubmit}>
+          {H5_COPY.lead.submit}
+        </button>
       </div>
-      <label className="privacy-row">
-        <input
-          type="checkbox"
-          checked={lead.privacyConsent}
-          onChange={(event) => onChange({ ...lead, privacyConsent: event.target.checked })}
-        />
-        <span>{H5_COPY.lead.privacy}</span>
-      </label>
-      {validation && <p className="validation-message">{validation}</p>}
-      <PrimaryButton disabled={!lead.privacyConsent || isSubmitting} onClick={onSubmit}>
-        {H5_COPY.lead.submit}
-      </PrimaryButton>
     </section>
   );
 }
