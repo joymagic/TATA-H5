@@ -9,7 +9,7 @@ import { ACTIVITY_CONFIG } from "@tata/shared-config";
 export type AdminRole = "HEADQUARTERS_ADMIN" | "CITY_ADMIN";
 export type AdminView = "dashboard" | "users";
 export type DataSource = "mock" | "api";
-export type RuntimeEnv = "development" | "testing" | "production";
+export type RuntimeEnv = "development" | "fat" | "testing" | "production";
 export type DateRange = "today" | "last7" | "last30" | "all";
 export type Personality = "悦己淡人" | "沉浸领主" | "觉主殿下" | "头号玩家";
 export type CityFilter = "all" | string;
@@ -96,7 +96,7 @@ export interface OperationLog {
 
 export interface RuntimeConfig {
   env: RuntimeEnv;
-  badge: "DEV ENV" | "TEST ENV" | "PROD ENV";
+  badge: "DEV ENV" | "FAT ENV" | "TEST ENV" | "PROD ENV";
   dataSource: DataSource;
   useMockData: boolean;
   apiBaseUrl: string;
@@ -200,22 +200,27 @@ export function getRuntimeConfig(): RuntimeConfig {
   const useMockData = dataSource === "mock";
   const apiBaseUrl = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? "").replace(/\/$/, "");
   const isTestingPreview = env === "testing" && useMockData;
+  const isFatPreview = env === "fat" && useMockData;
   const isProductionPreview = env === "production" && useMockData;
 
   return {
     env,
-    badge: env === "testing" ? "TEST ENV" : env === "production" ? "PROD ENV" : "DEV ENV",
+    badge: env === "fat" ? "FAT ENV" : env === "testing" ? "TEST ENV" : env === "production" ? "PROD ENV" : "DEV ENV",
     dataSource,
     useMockData,
     apiBaseUrl,
-    datasetLabel: isTestingPreview
+    datasetLabel: isFatPreview
+      ? "FAT 1.0 测试数据"
+      : isTestingPreview
       ? "测试预览数据"
       : isProductionPreview
       ? "真实环境预览数据"
       : useMockData
       ? "开发演示数据"
       : "测试环境 API",
-    datasetNotice: isTestingPreview
+    datasetNotice: isFatPreview
+      ? "当前为 FAT 1.0 测试环境 Admin，使用独立 mock 数据验收。"
+      : isTestingPreview
       ? "当前为测试环境 Admin 预览页，使用 mock 数据便于验收。"
       : isProductionPreview
       ? "当前为真实环境 Admin 预览页，后端接入前使用 mock 数据验收前端流程。"
@@ -427,6 +432,7 @@ function lead(
 }
 
 function normalizeRuntimeEnv(value: string): RuntimeEnv {
+  if (value.includes("fat")) return "fat";
   if (value.includes("test")) return "testing";
   if (value.includes("prod")) return "production";
   return "development";

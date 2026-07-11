@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @tata/h5 dev",
     "dev:admin": "pnpm --filter @tata/admin dev",
     "build": "pnpm --filter @tata/h5 build && pnpm --filter @tata/admin build",
+    "build:fat": "pnpm --filter @tata/h5 build:fat && pnpm --filter @tata/admin build:fat",
     "build:testing": "pnpm --filter @tata/h5 build:testing && pnpm --filter @tata/admin build:testing",
     "build:production": "pnpm --filter @tata/h5 build:production && pnpm --filter @tata/admin build:production",
     "build:deploy": "pnpm build:testing && pnpm build:production",

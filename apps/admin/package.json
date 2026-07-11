@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5174",
     "build": "tsc --noEmit && vite build",
+    "build:fat": "tsc --noEmit && VITE_ADMIN_ENV=fat VITE_ADMIN_DATA_SOURCE=mock vite build --mode fat --outDir dist/fat",
     "build:testing": "tsc --noEmit && VITE_ADMIN_ENV=testing VITE_ADMIN_DATA_SOURCE=mock vite build --mode testing --outDir dist/testing",
     "build:production": "tsc --noEmit && VITE_ADMIN_ENV=production VITE_ADMIN_DATA_SOURCE=mock vite build --mode production --outDir dist/production",
     "typecheck": "tsc --noEmit",
