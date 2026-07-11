@@ -1,9 +1,15 @@
 type SoundName = "tap" | "select" | "scan" | "reveal" | "spin" | "win";
 
+const MUSIC_URL = "/assets/audio/sunlight-in-the-living-room.mp3";
+
 class AudioEngine {
   private context: AudioContext | null = null;
+  private music: HTMLAudioElement | null = null;
   private enabled = false;
   private loopNodes: { oscillator: OscillatorNode; gain: GainNode }[] = [];
+  private ambientMaster: GainNode | null = null;
+  private ambientTimer: number | null = null;
+  private ambientGeneration = 0;
 
   get isEnabled() {
     return this.enabled;
@@ -11,20 +17,30 @@ class AudioEngine {
 
   async toggle() {
     if (this.enabled) {
+      this.music?.pause();
       this.stopAmbient();
       this.enabled = false;
       return false;
     }
     await this.ensureContext();
+    const music = this.ensureMusic();
+    try {
+      await music.play();
+    } catch {
+      return false;
+    }
     this.enabled = true;
-    this.startAmbient();
     return true;
   }
 
   async resumeFromGesture() {
+    if (!this.enabled) return;
     await this.ensureContext();
+    if (this.music?.paused) {
+      void this.music.play().catch(() => undefined);
+    }
     if (this.context?.state === "suspended") {
-      await this.context.resume();
+      void this.context.resume().catch(() => undefined);
     }
   }
 
@@ -57,6 +73,16 @@ class AudioEngine {
     this.context = new AudioContextClass();
   }
 
+  private ensureMusic() {
+    if (this.music) return this.music;
+    const music = new Audio(MUSIC_URL);
+    music.loop = true;
+    music.preload = "auto";
+    music.volume = 0.32;
+    this.music = music;
+    return music;
+  }
+
   private frequency(name: SoundName) {
     return {
       tap: 220,
@@ -80,30 +106,150 @@ class AudioEngine {
   }
 
   private startAmbient() {
-    if (!this.context || this.loopNodes.length) return;
+    if (!this.context || this.ambientMaster) return;
     const now = this.context.currentTime;
-    [43, 86, 129].forEach((frequency, index) => {
-      const oscillator = this.context!.createOscillator();
-      const gain = this.context!.createGain();
-      oscillator.type = "sawtooth";
-      oscillator.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(index === 0 ? 0.018 : 0.008, now + 0.8);
-      oscillator.connect(gain);
-      gain.connect(this.context!.destination);
-      oscillator.start();
-      this.loopNodes.push({ oscillator, gain });
-    });
+    const master = this.context.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.72, now + 1.8);
+    master.connect(this.context.destination);
+    this.ambientMaster = master;
+    this.ambientGeneration += 1;
+    this.scheduleAmbientCycle(this.ambientGeneration);
   }
 
   private stopAmbient() {
-    if (!this.context) return;
+    if (!this.context || !this.ambientMaster) return;
     const now = this.context.currentTime;
+    const master = this.ambientMaster;
+    this.ambientGeneration += 1;
+    if (this.ambientTimer !== null) {
+      window.clearTimeout(this.ambientTimer);
+      this.ambientTimer = null;
+    }
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(Math.max(master.gain.value, 0.0001), now);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
     this.loopNodes.forEach(({ oscillator, gain }) => {
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
-      oscillator.stop(now + 0.2);
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      try {
+        oscillator.stop(now + 0.24);
+      } catch {
+        // The oscillator may already have reached its scheduled stop time.
+      }
     });
     this.loopNodes = [];
+    this.ambientMaster = null;
+    window.setTimeout(() => master.disconnect(), 280);
+  }
+
+  private scheduleAmbientCycle(generation: number) {
+    if (!this.context || !this.ambientMaster || generation !== this.ambientGeneration) return;
+
+    const beat = 60 / 68;
+    const chordDuration = beat * 8;
+    const cycleDuration = chordDuration * 4;
+    const startsAt = this.context.currentTime + 0.08;
+    const progression = [
+      { bass: 38, notes: [50, 53, 57, 60, 64] }, // Dm9
+      { bass: 34, notes: [46, 50, 53, 57, 62] }, // Bbmaj9
+      { bass: 41, notes: [53, 57, 60, 67] }, // Fadd9
+      { bass: 36, notes: [48, 52, 55, 62, 64] }, // Cadd9
+    ];
+
+    progression.forEach((chord, chordIndex) => {
+      const chordStartsAt = startsAt + chordIndex * chordDuration;
+      chord.notes.forEach((midi, noteIndex) => {
+        this.scheduleTone({
+          frequency: this.midiToFrequency(midi),
+          startsAt: chordStartsAt,
+          duration: chordDuration + 0.35,
+          peak: noteIndex === 0 ? 0.013 : 0.008,
+          attack: 1.25,
+          release: 1.1,
+          type: noteIndex % 2 === 0 ? "sine" : "triangle",
+          detune: noteIndex % 2 === 0 ? -3 : 3,
+        });
+      });
+
+      this.scheduleTone({
+        frequency: this.midiToFrequency(chord.bass),
+        startsAt: chordStartsAt,
+        duration: chordDuration,
+        peak: 0.025,
+        attack: 0.9,
+        release: 1.4,
+        type: "sine",
+      });
+
+      for (let step = 0; step < 8; step += 1) {
+        const arpMidi = chord.notes[(step * 2 + chordIndex) % chord.notes.length] + 12;
+        this.scheduleTone({
+          frequency: this.midiToFrequency(arpMidi),
+          startsAt: chordStartsAt + step * beat,
+          duration: beat * 1.65,
+          peak: step % 4 === 0 ? 0.01 : 0.006,
+          attack: 0.04,
+          release: beat * 1.25,
+          type: "triangle",
+          detune: step % 2 === 0 ? -2 : 2,
+        });
+      }
+    });
+
+    this.ambientTimer = window.setTimeout(
+      () => this.scheduleAmbientCycle(generation),
+      Math.max(1000, (cycleDuration - 0.8) * 1000)
+    );
+  }
+
+  private scheduleTone({
+    frequency,
+    startsAt,
+    duration,
+    peak,
+    attack,
+    release,
+    type,
+    detune = 0,
+  }: {
+    frequency: number;
+    startsAt: number;
+    duration: number;
+    peak: number;
+    attack: number;
+    release: number;
+    type: OscillatorType;
+    detune?: number;
+  }) {
+    if (!this.context || !this.ambientMaster) return;
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    const endsAt = startsAt + duration;
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startsAt);
+    oscillator.detune.setValueAtTime(detune, startsAt);
+    gain.gain.setValueAtTime(0.0001, startsAt);
+    gain.gain.exponentialRampToValueAtTime(peak, startsAt + attack);
+    gain.gain.setValueAtTime(peak * 0.72, Math.max(startsAt + attack, endsAt - release));
+    gain.gain.exponentialRampToValueAtTime(0.0001, endsAt);
+    oscillator.connect(gain);
+    gain.connect(this.ambientMaster);
+    oscillator.start(startsAt);
+    oscillator.stop(endsAt + 0.02);
+
+    const node = { oscillator, gain };
+    this.loopNodes.push(node);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gain.disconnect();
+      this.loopNodes = this.loopNodes.filter((item) => item !== node);
+    };
+  }
+
+  private midiToFrequency(midi: number) {
+    return 440 * 2 ** ((midi - 69) / 12);
   }
 
   private noiseSweep(destination: AudioNode, now: number, duration: number) {

@@ -39,3 +39,20 @@ https://joymagic.github.io/TATA-H5/
 ```
 
 需要在 GitHub 仓库 Settings → Pages 中选择 GitHub Actions 作为发布来源。
+
+## 腾讯云双环境预览
+
+当前阶段部署 H5 和 Admin 前端预览，尚未接入共享 API 或数据库。H5 客资与抽奖数据保存在访问者浏览器，Admin 使用 mock 数据。
+
+```text
+测试 H5:       https://tata-test.cdsparkling.cn/
+测试 Admin:    https://tata-admin-test.cdsparkling.cn/
+真实 H5:       https://tata.cdsparkling.cn/
+真实 Admin:    https://tata-admin.cdsparkling.cn/
+```
+
+服务器部署前先安装 Node.js、pnpm、Nginx、rsync 和 Certbot，然后执行：
+
+```bash
+sudo bash infra/scripts/deploy-static.sh
+```

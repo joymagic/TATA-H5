@@ -39,6 +39,10 @@ declare module "@tata/shared-config" {
   export const H5_COPY: {
     loading: { brand: string };
     home: { titleLines: string[]; startButton: string };
+    rules: {
+      title: string;
+      items: Array<{ label: string; text: string }>;
+    };
     resultLoading: { titleLines: string[]; error: string; retry: string };
     result: { cta: string; shareButtons: string[] };
     poster: { bottomLines: string[]; qrLabel: string };

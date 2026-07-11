@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
+    "build:testing": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026-test VITE_ENV_LABEL='TEST ENV' VITE_SHARE_URL=https://tata-test.cdsparkling.cn/ vite build --mode testing --outDir dist/testing",
+    "build:production": "tsc --noEmit && VITE_ACTIVITY_ID=tata-silent-personality-2026 VITE_ENV_LABEL='PROD ENV' VITE_SHARE_URL=https://tata.cdsparkling.cn/ vite build --mode production --outDir dist/production",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 127.0.0.1"
   },

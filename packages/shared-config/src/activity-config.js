@@ -1,6 +1,8 @@
+const runtimeEnv = import.meta.env ?? {};
+
 export const ACTIVITY_CONFIG = {
-  activityId: "tata-silent-personality-2026-dev",
-  environmentLabel: "DEV ENV",
+  activityId: runtimeEnv.VITE_ACTIVITY_ID || "tata-silent-personality-2026-dev",
+  environmentLabel: runtimeEnv.VITE_ENV_LABEL || "DEV ENV",
   allowRepeatQuiz: true,
   allowRepeatLead: false,
   allowRepeatLottery: false,
@@ -10,7 +12,7 @@ export const ACTIVITY_CONFIG = {
     label: "2026.07.23-2026.08.31",
   },
   privacyPolicyUrl: "#todo-privacy-policy",
-  shareUrl: "https://example.com/tata-silent-personality",
+  shareUrl: runtimeEnv.VITE_SHARE_URL || "https://example.com/tata-silent-personality",
   mockCities: ["北京", "上海", "广州", "深圳", "杭州", "成都"],
   lottery: {
     drawChancePerUser: 1,

@@ -6,6 +6,18 @@ export const H5_COPY = {
     titleLines: ["测测你的宅家人格", "静化到哪一步了"],
     startButton: "开始测试 →",
   },
+  rules: {
+    title: "活动规则",
+    items: [
+      { label: "活动时间", text: "2026.07.23 - 2026.08.31" },
+      { label: "参与方式", text: "完成 5 道静音人格测试并提交客资后，可参与抽奖。" },
+      { label: "抽奖规则", text: "每人限抽奖 1 次。" },
+      {
+        label: "奖券使用",
+        text: "到店下单签约后出示中奖券截图核销，请妥善保存，活动到期后自动失效。",
+      },
+    ],
+  },
   resultLoading: {
     titleLines: ["正在生成你的", "静音人格"],
     error: "结果生成失败，请重试",

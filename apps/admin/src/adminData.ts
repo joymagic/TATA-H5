@@ -200,6 +200,7 @@ export function getRuntimeConfig(): RuntimeConfig {
   const useMockData = dataSource === "mock";
   const apiBaseUrl = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? "").replace(/\/$/, "");
   const isTestingPreview = env === "testing" && useMockData;
+  const isProductionPreview = env === "production" && useMockData;
 
   return {
     env,
@@ -207,9 +208,17 @@ export function getRuntimeConfig(): RuntimeConfig {
     dataSource,
     useMockData,
     apiBaseUrl,
-    datasetLabel: isTestingPreview ? "测试预览数据" : useMockData ? "开发演示数据" : "测试环境 API",
+    datasetLabel: isTestingPreview
+      ? "测试预览数据"
+      : isProductionPreview
+      ? "真实环境预览数据"
+      : useMockData
+      ? "开发演示数据"
+      : "测试环境 API",
     datasetNotice: isTestingPreview
       ? "当前为测试环境 Admin 预览页，使用 mock 数据便于验收。"
+      : isProductionPreview
+      ? "当前为真实环境 Admin 预览页，后端接入前使用 mock 数据验收前端流程。"
       : useMockData
       ? "当前数据仅用于本地开发演示，不属于测试环境数据。"
       : "当前页面将从独立测试环境 API 读取数据，不加载本地 mock。配置 VITE_ADMIN_API_BASE_URL 后启用。",

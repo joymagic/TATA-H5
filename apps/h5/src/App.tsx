@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Share2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ACTIVITY_CONFIG, ASSETS, H5_COPY, QUESTIONS } from "@tata/shared-config";
@@ -41,6 +42,7 @@ function App() {
   const [resultError, setResultError] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [wheelRotation, setWheelRotation] = useState(0);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const selectTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -230,7 +232,14 @@ function App() {
       <div className="phone-stage">
         <span className="env-badge">{ACTIVITY_CONFIG.environmentLabel}</span>
         {screen === "loading" && <LoadingScreen progress={loadingProgress} />}
-        {screen === "home" && <HomeScreen audioEnabled={audioEnabled} onAudioToggle={toggleAudio} onStart={startQuiz} />}
+        {screen === "home" && (
+          <HomeScreen
+            audioEnabled={audioEnabled}
+            onAudioToggle={toggleAudio}
+            onRules={() => setRulesOpen(true)}
+            onStart={startQuiz}
+          />
+        )}
         {screen === "quiz" && currentQuestion && (
           <QuizScreen
             answer={answers[questionIndex]}
@@ -272,6 +281,7 @@ function App() {
           />
         )}
         {screen === "lotteryResult" && prize && <LotteryResultScreen prize={prize} onBackHome={backHome} />}
+        {rulesOpen && <ActivityRulesModal onClose={() => setRulesOpen(false)} />}
       </div>
       {posterDataUrl && (
         <div className="poster-modal" role="dialog" aria-modal="true" onClick={() => setPosterDataUrl("")}>
@@ -303,15 +313,20 @@ function LoadingScreen({ progress }: { progress: number }) {
 function HomeScreen({
   audioEnabled,
   onAudioToggle,
+  onRules,
   onStart,
 }: {
   audioEnabled: boolean;
   onAudioToggle: () => void;
+  onRules: () => void;
   onStart: () => void;
 }) {
   return (
     <section className="screen home-screen">
       <BrandHeader />
+      <button className="rules-button" type="button" onClick={onRules}>
+        活动规则
+      </button>
       <button className="icon-button music-button" type="button" onClick={onAudioToggle} aria-label="音乐开关">
         {audioEnabled ? <Music2 size={20} /> : <VolumeX size={20} />}
       </button>
@@ -325,6 +340,41 @@ function HomeScreen({
       </div>
       <PrimaryButton onClick={onStart}>{H5_COPY.home.startButton}</PrimaryButton>
     </section>
+  );
+}
+
+function ActivityRulesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="rules-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="rules-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="activity-rules-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="rules-modal-header">
+          <div>
+            <span className="rules-eyebrow">TATA 静音人格测试</span>
+            <h2 id="activity-rules-title">{H5_COPY.rules.title}</h2>
+          </div>
+          <button className="rules-close" type="button" onClick={onClose} aria-label="关闭活动规则">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="rules-list">
+          {H5_COPY.rules.items.map((item, index) => (
+            <article className="rules-item" key={item.label}>
+              <span className="rules-index">{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <strong>{item.label}</strong>
+                <p>{item.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
