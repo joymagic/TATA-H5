@@ -1,18 +1,14 @@
 import {
-  ArrowDownToLine,
-  ArrowLeft,
   Check,
   ChevronDown,
-  MessageCircle,
   Music,
   Music2,
   RotateCcw,
-  Share2,
   VolumeX,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ACTIVITY_CONFIG, ASSETS, H5_COPY, QUESTIONS } from "@tata/shared-config";
+import { ACTIVITY_CONFIG, H5_COPY, QUESTIONS } from "@tata/shared-config";
 import { audioEngine } from "./lib/audio";
 import { generatePoster } from "./lib/poster";
 import { LotteryRuleError, activityApi } from "./services/api";
@@ -28,11 +24,19 @@ const initialLead: LeadFormState = {
 
 const ANALYSIS_STEPS = ["分析答题数据", "识别宅家人格", "匹配静音等级", "生成专属报告"];
 const RESULT_LOADING_MIN_MS = 2400;
-const FIGMA_LEVEL1_RESULT_ASSETS = {
-  teaRoom: "https://www.figma.com/api/mcp/asset/06b71b6d-5d46-4a7d-bf91-4011436303c5",
-  mask: "https://www.figma.com/api/mcp/asset/ea1d6d60-bc83-4a2d-bd40-947a696eac08",
-  title: "https://www.figma.com/api/mcp/asset/e1a613b3-cb2b-4094-a011-cc973a4c3d77",
-};
+const RESULT_IMAGE_COUNT = 4;
+const RESULT_LEVEL_VALUES = {
+  level1: "隔声量20(dB)≤Rw+C<25(dB)",
+  level2: "隔声量25(dB)≤Rw+C<30(dB)",
+  level3: "隔声量30(dB)≤Rw+C<35(dB)",
+  level4: "隔声量Rw+C≥35(dB)",
+} as const;
+const RESULT_THEMES = {
+  level1: { bg: "#d6b36d", accent: "#956a3f", button: "#f1dbb1", roman: "Ⅰ" },
+  level2: { bg: "#c18be4", accent: "#4b2b7c", button: "#c18be4", roman: "Ⅱ" },
+  level3: { bg: "#bed8c7", accent: "#203c36", button: "#d5efd9", roman: "Ⅲ" },
+  level4: { bg: "#b9d8ef", accent: "#1a75b4", button: "#b9d8ef", roman: "Ⅳ" },
+} as const;
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -45,6 +49,7 @@ function App() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<OptionKey[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [resultBackground, setResultBackground] = useState("");
   const [lead, setLead] = useState<LeadFormState>(initialLead);
   const [validation, setValidation] = useState("");
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
@@ -54,7 +59,6 @@ function App() {
   const [toast, setToast] = useState("");
   const [resultError, setResultError] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [wheelRotation, setWheelRotation] = useState(0);
   const [rulesOpen, setRulesOpen] = useState(false);
   const selectTimer = useRef<number | null>(null);
 
@@ -84,8 +88,7 @@ function App() {
 
   const currentQuestion = QUESTIONS[questionIndex];
   const activeResult = result;
-  const isFigmaLevel1Result = screen === "result" && activeResult?.id === "level1";
-  const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "lead"].includes(screen) || isFigmaLevel1Result;
+  const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   const leadHint = useMemo(() => {
     if (!activeResult) return "";
@@ -98,6 +101,7 @@ function App() {
     setQuestionIndex(0);
     setAnswers([]);
     setResult(null);
+    setResultBackground("");
     setLead(initialLead);
     setPrize(null);
     setPosterDataUrl("");
@@ -134,6 +138,7 @@ function App() {
         const nextResult = await activityApi.submitQuiz(nextAnswers);
         await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
         setResult(nextResult);
+        setResultBackground(pickResultBackground(nextResult.productKey));
         audioEngine.play("reveal");
         setScreen("result");
       } catch {
@@ -152,6 +157,7 @@ function App() {
       const nextResult = await activityApi.submitQuiz(answers);
       await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
       setResult(nextResult);
+      setResultBackground(pickResultBackground(nextResult.productKey));
       setScreen("result");
     } catch {
       await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
@@ -160,32 +166,15 @@ function App() {
     }
   }
 
-  async function handlePosterSave() {
-    if (!activeResult) return;
-    audioEngine.play("tap");
-    try {
-      const dataUrl = await generatePoster(activeResult);
-      setPosterDataUrl(dataUrl);
-      setToast(H5_COPY.system.posterReady);
-    } catch {
-      setToast(H5_COPY.system.posterFailed);
-    }
-  }
-
   async function downloadPoster() {
     if (!activeResult) return;
     audioEngine.play("tap");
     try {
-      const dataUrl = await generatePoster(activeResult);
+      const dataUrl = await generatePoster(activeResult, resultBackground);
       await downloadDataUrl(dataUrl, `TATA-${activeResult.title}-静音人格海报.png`);
     } catch {
       setToast(H5_COPY.system.posterFailed);
     }
-  }
-
-  function handleShareClick() {
-    audioEngine.play("tap");
-    setToast(H5_COPY.system.shareInWechat);
   }
 
   function validateLead() {
@@ -217,7 +206,6 @@ function App() {
     if (isDrawing) return;
     audioEngine.play("spin");
     setIsDrawing(true);
-    setWheelRotation((rotation) => rotation + 1440 + 45);
     try {
       const nextPrize = await activityApi.drawLottery(`${session?.sessionToken ?? "session"}-${Date.now()}`);
       setPrize(nextPrize);
@@ -286,26 +274,15 @@ function App() {
           <ResultLoadingScreen hasError={resultError} onBack={() => setScreen("quiz")} onRetry={retryResult} />
         )}
         {screen === "result" && activeResult && (
-          activeResult.id === "level1" ? (
-            <FigmaLevel1ResultScreen
-              result={activeResult}
-              onBack={() => setScreen("quiz")}
-              onSaveAndLead={async () => {
-                await downloadPoster();
-                setScreen("lead");
-              }}
-            />
-          ) : (
-            <ResultScreen
-              result={activeResult}
-              onLead={() => {
-                audioEngine.play("tap");
-                setScreen("lead");
-              }}
-              onPoster={handlePosterSave}
-              onShare={handleShareClick}
-            />
-          )
+          <FigmaResultScreen
+            result={activeResult}
+            background={resultBackground}
+            onBack={() => setScreen("quiz")}
+            onSaveAndLead={async () => {
+              await downloadPoster();
+              setScreen("lead");
+            }}
+          />
         )}
         {screen === "lead" && activeResult && (
           <LeadScreen
@@ -321,7 +298,6 @@ function App() {
         {screen === "lottery" && (
           <LotteryScreen
             isDrawing={isDrawing}
-            rotation={wheelRotation}
             onBack={() => setScreen("lead")}
             onDraw={drawLottery}
           />
@@ -517,43 +493,6 @@ function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean;
   );
 }
 
-function ResultScreen({
-  result,
-  onLead,
-  onPoster,
-  onShare,
-}: {
-  result: QuizResult;
-  onLead: () => void;
-  onPoster: () => void;
-  onShare: () => void;
-}) {
-  return (
-    <section className="screen result-screen">
-      <BrandHeader />
-      <div className="result-hero">
-        <div className="level-tag">{result.levelDisplay}</div>
-        <h1>{result.title}</h1>
-        <p>{result.description}</p>
-        <div className="result-scene-card" aria-hidden="true">
-          <img src={ASSETS.products[result.productKey]} alt="" aria-hidden="true" />
-          <span className="result-wave" aria-hidden="true" />
-        </div>
-      </div>
-      <div className="sound-value">
-        <span>{result.scene}</span>
-        <strong>{result.levelName}</strong>
-      </div>
-      <PrimaryButton onClick={onLead}>{H5_COPY.result.cta}</PrimaryButton>
-      <div className="share-row">
-        <ShareButton icon={<ArrowDownToLine size={22} />} label={H5_COPY.result.shareButtons[0]} onClick={onPoster} />
-        <ShareButton icon={<Share2 size={22} />} label={H5_COPY.result.shareButtons[1]} onClick={onShare} />
-        <ShareButton icon={<MessageCircle size={22} />} label={H5_COPY.result.shareButtons[2]} onClick={onShare} />
-      </div>
-    </section>
-  );
-}
-
 async function downloadDataUrl(dataUrl: string, filename: string) {
   const link = document.createElement("a");
   link.href = dataUrl;
@@ -564,30 +503,93 @@ async function downloadDataUrl(dataUrl: string, filename: string) {
   link.remove();
 }
 
-function FigmaLevel1ResultScreen({
+function getResultBackgroundUrl(productKey: QuizResult["productKey"], index: number) {
+  return `/assets/result-backgrounds/${productKey}/${index}.png`;
+}
+
+function pickResultBackground(productKey: QuizResult["productKey"]) {
+  const storageKey = `tata-result-bg-history-${productKey}`;
+  const indexes = Array.from({ length: RESULT_IMAGE_COUNT }, (_, index) => index + 1);
+  try {
+    const history = JSON.parse(window.localStorage.getItem(storageKey) || "[]") as number[];
+    const available = indexes.filter((index) => !history.includes(index));
+    const nextIndex = available.length > 0 ? available[0] : indexes[Math.floor(Math.random() * indexes.length)];
+    const nextHistory = available.length > 0 ? [...history, nextIndex] : [nextIndex];
+    window.localStorage.setItem(storageKey, JSON.stringify(nextHistory.slice(-RESULT_IMAGE_COUNT)));
+    return getResultBackgroundUrl(productKey, nextIndex);
+  } catch {
+    return getResultBackgroundUrl(productKey, Math.floor(Math.random() * RESULT_IMAGE_COUNT) + 1);
+  }
+}
+
+function formatResultDescription(result: QuizResult) {
+  const roman = RESULT_THEMES[result.productKey].roman;
+  return result.description
+    .replace("IV级", `${roman}级`)
+    .replace("III级", `${roman}级`)
+    .replace("II级", `${roman}级`)
+    .replace("I级", `${roman}级`);
+}
+
+function FigmaResultScreen({
   result,
+  background,
   onBack,
   onSaveAndLead,
 }: {
   result: QuizResult;
+  background: string;
   onBack: () => void;
   onSaveAndLead: () => void | Promise<void>;
 }) {
+  const theme = RESULT_THEMES[result.productKey];
   return (
-    <section className="screen figma-screen figma-level1-result-screen" data-node-id="2004:2714">
-      <div className="figma-level1-result-photo" data-node-id="2004:2716" aria-hidden="true">
-        <img src={FIGMA_LEVEL1_RESULT_ASSETS.teaRoom} alt="" />
+    <section className="screen figma-screen figma-static-screen figma-result-screen">
+      <div
+        className="figma-static-canvas figma-result-canvas"
+        style={{ "--result-bg": theme.bg, "--result-accent": theme.accent, "--result-button": theme.button } as CSSProperties}
+      >
+        <img className="figma-result-scene" src={background || getResultBackgroundUrl(result.productKey, 1)} alt="" aria-hidden="true" />
+        <button className="figma-back-button figma-result-visible-back" type="button" onClick={onBack} aria-label="返回">
+          <img src="/assets/figma/figma-back.png" alt="" />
+        </button>
+        <div className="figma-dynamic-level">
+          <span aria-hidden="true" />
+          <strong>{result.levelName}</strong>
+          <em>{theme.roman}级静音</em>
+          <small>{RESULT_LEVEL_VALUES[result.productKey]}</small>
+        </div>
+        <article className="figma-dynamic-card">
+          <span>静音人格</span>
+          <h1>{result.title}</h1>
+          <p>{formatResultDescription(result)}</p>
+        </article>
+        <button className="figma-hit-area figma-result-save-hit" type="button" onClick={() => void onSaveAndLead()}>
+          点击保存并开始抽奖
+        </button>
       </div>
-      <img className="figma-level1-result-mask" src={FIGMA_LEVEL1_RESULT_ASSETS.mask} alt="" aria-hidden="true" />
-      <button className="figma-back-button figma-result-back-button" type="button" onClick={onBack} aria-label="返回">
-        <img src="/assets/figma/figma-back.png" alt="" />
-      </button>
-      <div className="figma-level1-result-title" aria-label={`${result.levelName}，${result.levelDisplay}`}>
-        <img src={FIGMA_LEVEL1_RESULT_ASSETS.title} alt="" aria-hidden="true" />
+    </section>
+  );
+}
+
+function LotteryScreen({
+  isDrawing,
+  onBack,
+  onDraw,
+}: {
+  isDrawing: boolean;
+  onBack: () => void;
+  onDraw: () => void;
+}) {
+  return (
+    <section className="screen figma-screen figma-static-screen figma-lottery-screen">
+      <div className="figma-static-canvas">
+        <img className="figma-static-art" src="/assets/figma/lottery.png" alt="点击抽奖，获取您的美好人居大奖" />
+        <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回" />
+        <button className="figma-hit-area figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
+          <span className="sr-only">{H5_COPY.lottery.button}</span>
+        </button>
       </div>
-      <button className="figma-result-save-button" type="button" onClick={() => void onSaveAndLead()}>
-        <span>点击保存并开始抽奖</span>
-      </button>
     </section>
   );
 }
@@ -696,86 +698,24 @@ function LeadScreen({
   );
 }
 
-function LotteryScreen({
-  isDrawing,
-  rotation,
-  onBack,
-  onDraw,
-}: {
-  isDrawing: boolean;
-  rotation: number;
-  onBack: () => void;
-  onDraw: () => void;
-}) {
-  return (
-    <section className="screen lottery-screen">
-      <button className="back-button" type="button" onClick={onBack} aria-label="返回">
-        <ArrowLeft size={20} />
-      </button>
-      <p className="lottery-limit">{H5_COPY.lottery.limitTip}</p>
-      <div className="wheel-wrap">
-        <div className="wheel" style={{ transform: `rotate(${rotation}deg)` }}>
-          {Array.from({ length: 8 }).map((_, index) => (
-            <i key={index} style={{ transform: `rotate(${index * 45}deg)` }} />
-          ))}
-        </div>
-        <button className="wheel-button" disabled={isDrawing} type="button" onClick={onDraw}>
-          {H5_COPY.lottery.button}
-        </button>
-      </div>
-    </section>
-  );
-}
-
 function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBackHome: () => void }) {
   return (
-    <section className="screen lottery-result-screen">
-      <div className="result-prize-title">
-        <h1>{H5_COPY.lotteryResult.resultLabel}</h1>
-      </div>
-      <div className="ticket-card">
-        <div className="ticket-amount">{prize.prizeName}</div>
-        <div className="coupon-box">
-          <span>奖券券码</span>
+    <section className="screen figma-screen figma-static-screen figma-lottery-result-screen">
+      <div className="figma-static-canvas">
+        <img className="figma-static-art" src="/assets/figma/prize.png" alt="" aria-hidden="true" />
+        <button className="figma-hit-area figma-prize-back-hit" type="button" onClick={onBackHome} aria-label="返回首页" />
+        <div className="figma-prize-text-mask" aria-hidden="true" />
+        <div className="figma-prize-result-title">
+          <p>恭喜您获得</p>
+          <h1>{prize.prizeName}</h1>
+        </div>
+        <div className="figma-coupon-code">
+          <span>奖品兑换码：</span>
           <strong>{prize.couponCode}</strong>
         </div>
+        <p className="figma-coupon-tip">截图保存您的代金券<br />可至全国门店签约后核销兑换<br />礼品以门店设置为准</p>
       </div>
-      <p className="coupon-tip">{H5_COPY.lotteryResult.couponTip}</p>
-      <PrimaryButton onClick={onBackHome}>{H5_COPY.lotteryResult.backHome}</PrimaryButton>
     </section>
-  );
-}
-
-function BrandHeader() {
-  return (
-    <header className="brand-header">
-      <img src={ASSETS.logo} alt={H5_COPY.loading.brand} />
-    </header>
-  );
-}
-
-function PrimaryButton({
-  children,
-  disabled = false,
-  onClick,
-}: {
-  children: React.ReactNode;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button className="primary-button" disabled={disabled} type="button" onClick={onClick}>
-      <span>{children}</span>
-    </button>
-  );
-}
-
-function ShareButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button className="share-button" type="button" onClick={onClick}>
-      {icon}
-      <span>{label}</span>
-    </button>
   );
 }
 

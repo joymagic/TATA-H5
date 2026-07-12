@@ -102,14 +102,14 @@ export const H5_COPY = {
   },
   lottery: {
     button: "点击抽奖",
-    limitTip: "每人限抽奖 1 次",
+    limitTip: "获取您的美好人居大奖",
   },
   lotteryResult: {
-    title: "开始抽奖",
-    description: "点击转盘即可抽取专属奖券",
-    resultLabel: "恭喜您，抽中幸运好礼",
+    title: "恭喜您获得",
+    description: "奖品兑换码：",
+    resultLabel: "恭喜您获得",
     couponTip:
-      "到店下单签约后出示中奖券截图核销，请妥善保存，活动到期后自动失效",
+      "截图保存您的代金券，可至全国门店签约后核销兑换，礼品以门店设置为准",
     backHome: "返回首页",
   },
   system: {
