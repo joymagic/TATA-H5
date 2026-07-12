@@ -168,10 +168,6 @@ button:disabled {
   display: none;
 }
 
-.phone-stage.has-figma-screen {
-  width: min(100%, 375px);
-}
-
 .brand-header {
   position: relative;
   z-index: 3;
@@ -1370,15 +1366,13 @@ button:disabled {
    result, lottery and prize screens keep their current visual treatment. */
 .figma-screen {
   position: relative;
-  left: 50%;
-  width: min(100%, 375px);
+  width: 100%;
   height: 100dvh;
-  min-height: 667px;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   color: #2b2424;
   background: #eddfd6;
-  transform: translateX(-50%);
 }
 
 .figma-bg {
@@ -1388,7 +1382,8 @@ button:disabled {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: cover;
+  object-position: center;
   pointer-events: none;
   user-select: none;
 }
@@ -1396,7 +1391,7 @@ button:disabled {
 .figma-back-button {
   position: absolute;
   z-index: 4;
-  left: 20px;
+  left: clamp(16px, 5.33vw, 23px);
   top: max(20px, env(safe-area-inset-top));
   display: grid;
   width: 48px;
@@ -1431,7 +1426,7 @@ button:disabled {
 }
 
 .figma-home-logo {
-  left: 24px;
+  left: clamp(20px, 6.4vw, 28px);
   top: max(24px, env(safe-area-inset-top));
   width: 100px;
   height: 21px;
@@ -1522,16 +1517,16 @@ button:disabled {
 .figma-home-copy {
   position: absolute;
   z-index: 2;
-  left: 24px;
+  left: clamp(20px, 6.4vw, 28px);
   top: 18.47%;
-  width: 330px;
+  width: calc(100% - clamp(40px, 12.8vw, 56px));
 }
 
 .figma-home-copy h1 {
   margin: 0;
   color: #2b2424;
   font-family: "Alibaba PuHuiTi", "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 32px;
+  font-size: clamp(28px, 8.53vw, 36px);
   font-weight: 900;
   line-height: 1.45;
   letter-spacing: -1px;
@@ -1545,7 +1540,7 @@ button:disabled {
 }
 
 .figma-home-copy h1 strong {
-  font-size: 44px;
+  font-size: clamp(39px, 11.73vw, 48px);
 }
 
 .figma-home-copy p {
@@ -1561,7 +1556,7 @@ button:disabled {
   z-index: 3;
   left: 50%;
   display: flex;
-  width: 306px;
+  width: min(81.6%, 340px);
   height: 58px;
   align-items: center;
   justify-content: center;
@@ -1617,7 +1612,7 @@ button:disabled {
 
 .figma-quiz-count {
   position: absolute;
-  right: 30px;
+  right: clamp(24px, 8vw, 34px);
   top: max(25px, calc(env(safe-area-inset-top) + 5px));
   display: flex;
   align-items: flex-end;
@@ -1641,10 +1636,10 @@ button:disabled {
 
 .figma-quiz-progress {
   position: absolute;
-  left: 31px;
+  left: 8.27%;
   top: 10.35%;
   display: grid;
-  width: 314px;
+  width: 83.73%;
   grid-template-columns: 15px 1fr 17px;
   align-items: center;
   gap: 6px;
@@ -1670,24 +1665,27 @@ button:disabled {
 
 .figma-quiz-visual {
   position: absolute;
-  left: 35px;
-  top: 126px;
+  left: 50%;
+  top: 15.52%;
   display: block;
-  width: 293px;
-  height: 278px;
+  width: auto;
+  max-width: 78.13%;
+  height: clamp(184px, 34.24dvh, 278px);
+  aspect-ratio: 293 / 278;
   object-fit: fill;
+  transform: translateX(-50%);
 }
 
 .figma-question-title {
   position: absolute;
-  left: 30px;
-  top: 424px;
-  width: 315px;
+  left: 8%;
+  top: 52.22%;
+  width: 84%;
   margin: 0;
   padding-left: 18px;
   border-left: 6px solid #b6001f;
   color: #2b2424;
-  font-size: 20px;
+  font-size: clamp(17px, 5.33vw, 21px);
   font-weight: 600;
   line-height: 32px;
   white-space: nowrap;
@@ -1695,22 +1693,23 @@ button:disabled {
 
 .figma-option-list {
   position: absolute;
-  left: 26px;
-  top: 484px;
+  left: 50%;
+  top: 59.61%;
   display: grid;
-  width: 323px;
-  gap: 8px;
+  width: 86.13%;
+  gap: clamp(4px, 0.99dvh, 8px);
+  transform: translateX(-50%);
 }
 
 .figma-option-button {
   position: relative;
   display: grid;
-  width: 323px;
-  height: 47px;
+  width: 100%;
+  height: clamp(39px, 5.79dvh, 47px);
   grid-template-columns: 31px 1fr 22px;
   align-items: center;
-  gap: 14px;
-  padding: 0 19px 0 24px;
+  gap: clamp(8px, 3.73vw, 14px);
+  padding: 0 clamp(12px, 5.07vw, 21px) 0 clamp(14px, 6.4vw, 26px);
   border: 3px solid #2b2424;
   border-radius: 0;
   color: #2b2424;
@@ -1734,7 +1733,7 @@ button:disabled {
 
 .figma-option-button span {
   min-width: 0;
-  font-size: 15px;
+  font-size: clamp(13px, 4vw, 15px);
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
@@ -1945,9 +1944,9 @@ button:disabled {
 .figma-level1-result-photo {
   position: absolute;
   z-index: 0;
-  left: -9px;
+  left: -2.4%;
   top: 0;
-  width: 457px;
+  width: 121.87%;
   height: 100%;
   overflow: hidden;
   pointer-events: none;
@@ -1982,10 +1981,11 @@ button:disabled {
 .figma-level1-result-title {
   position: absolute;
   z-index: 3;
-  left: 78px;
+  left: 20.8%;
   top: 12.81%;
-  width: 220px;
-  height: 141px;
+  width: 58.67%;
+  height: auto;
+  aspect-ratio: 220 / 141;
   pointer-events: none;
 }
 
@@ -1999,10 +1999,10 @@ button:disabled {
 .figma-result-save-button {
   position: absolute;
   z-index: 4;
-  left: 57px;
+  left: 15.2%;
   top: 82.64%;
   display: grid;
-  width: 260px;
+  width: 69.33%;
   height: 47px;
   place-items: center;
   padding: 0 18px;
@@ -2029,15 +2029,16 @@ button:disabled {
 
 .figma-lead-card {
   position: absolute;
-  left: 37px;
+  left: 50%;
   top: 13.55%;
-  width: 300px;
+  width: min(80%, 344px);
   height: 73.9%;
   min-height: 540px;
   padding: 40px 20px 90px;
   border: 1px solid #2b2424;
   background: rgba(237, 223, 214, 0.94);
   clip-path: polygon(0 0, 92% 0, 100% 4%, 100% 96%, 96% 100%, 0 100%);
+  transform: translateX(-50%);
 }
 
 .figma-lead-card::before {
@@ -2177,20 +2178,21 @@ button:disabled {
 
 .figma-lead-card .validation-message {
   position: absolute;
-  left: 20px;
+  left: 50%;
   bottom: 69px;
-  width: 260px;
+  width: min(86.67%, 260px);
   margin: 0;
   color: #b6001f;
   font-size: 10px;
   text-align: center;
+  transform: translateX(-50%);
 }
 
 .figma-submit-button {
   position: absolute;
   left: 50%;
   bottom: 24px;
-  width: 260px;
+  width: min(86.67%, 260px);
   height: 48px;
   border: 1.5px solid #2b2424;
   border-radius: 0;
@@ -2215,12 +2217,70 @@ button:disabled {
 
 @media (max-height: 720px) {
   .figma-lead-card {
-    top: 80px;
-    height: 600px;
+    top: max(68px, calc(env(safe-area-inset-top) + 54px));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    height: auto;
+    min-height: 0;
+    padding: 28px 16px 64px;
   }
 
   .figma-home-cta {
     top: auto;
-    bottom: 36px;
+    bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
+  }
+
+  .figma-lead-intro {
+    gap: 5px;
+    padding: 7px 8px;
+  }
+
+  .figma-lead-intro p {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .figma-lead-intro strong {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .figma-form-stack {
+    gap: 7px;
+    margin-top: 7px;
+  }
+
+  .figma-lead-card .field {
+    gap: 4px;
+  }
+
+  .figma-lead-card .field input,
+  .figma-lead-card .field select {
+    height: 34px;
+  }
+
+  .figma-lead-card .select-wrap svg {
+    top: 8px;
+  }
+
+  .figma-privacy-row {
+    margin-top: 7px;
+    font-size: 8px;
+  }
+
+  .figma-submit-button {
+    bottom: 14px;
+    height: 42px;
+  }
+
+  .figma-lead-card .validation-message {
+    bottom: 57px;
+  }
+}
+
+@media (max-width: 340px) {
+  .figma-option-button span {
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: normal;
   }
 }
