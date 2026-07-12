@@ -11,7 +11,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ACTIVITY_CONFIG, ASSETS, H5_COPY, QUESTIONS } from "@tata/shared-config";
 import { audioEngine } from "./lib/audio";
 import { generatePoster } from "./lib/poster";
@@ -21,9 +21,22 @@ import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, Screen, Sessio
 const initialLead: LeadFormState = {
   name: "",
   phone: "",
+  province: "",
   city: "",
   privacyConsent: false,
 };
+
+const ANALYSIS_STEPS = ["分析答题数据", "识别宅家人格", "匹配静音等级", "生成专属报告"];
+const RESULT_LOADING_MIN_MS = 2400;
+const FIGMA_LEVEL1_RESULT_ASSETS = {
+  teaRoom: "https://www.figma.com/api/mcp/asset/06b71b6d-5d46-4a7d-bf91-4011436303c5",
+  mask: "https://www.figma.com/api/mcp/asset/ea1d6d60-bc83-4a2d-bd40-947a696eac08",
+  title: "https://www.figma.com/api/mcp/asset/e1a613b3-cb2b-4094-a011-cc973a4c3d77",
+};
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
 
 function App() {
   const [screen, setScreen] = useState<Screen>("loading");
@@ -71,6 +84,8 @@ function App() {
 
   const currentQuestion = QUESTIONS[questionIndex];
   const activeResult = result;
+  const isFigmaLevel1Result = screen === "result" && activeResult?.id === "level1";
+  const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "lead"].includes(screen) || isFigmaLevel1Result;
 
   const leadHint = useMemo(() => {
     if (!activeResult) return "";
@@ -114,26 +129,32 @@ function App() {
       setScreen("resultLoading");
       setResultError(false);
       audioEngine.play("scan");
+      const loadingStartedAt = Date.now();
       try {
         const nextResult = await activityApi.submitQuiz(nextAnswers);
+        await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
         setResult(nextResult);
         audioEngine.play("reveal");
         setScreen("result");
       } catch {
+        await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
         setResultError(true);
         setToast(H5_COPY.resultLoading.error);
       }
-    }, 380);
+    }, 720);
   }
 
   async function retryResult() {
     setScreen("resultLoading");
     setResultError(false);
+    const loadingStartedAt = Date.now();
     try {
       const nextResult = await activityApi.submitQuiz(answers);
+      await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
       setResult(nextResult);
       setScreen("result");
     } catch {
+      await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
       setResultError(true);
       setToast(H5_COPY.resultLoading.error);
     }
@@ -151,6 +172,17 @@ function App() {
     }
   }
 
+  async function downloadPoster() {
+    if (!activeResult) return;
+    audioEngine.play("tap");
+    try {
+      const dataUrl = await generatePoster(activeResult);
+      await downloadDataUrl(dataUrl, `TATA-${activeResult.title}-静音人格海报.png`);
+    } catch {
+      setToast(H5_COPY.system.posterFailed);
+    }
+  }
+
   function handleShareClick() {
     audioEngine.play("tap");
     setToast(H5_COPY.system.shareInWechat);
@@ -159,6 +191,7 @@ function App() {
   function validateLead() {
     if (!lead.name.trim()) return H5_COPY.lead.validation.name;
     if (!/^1[3-9]\d{9}$/.test(lead.phone.trim())) return H5_COPY.lead.validation.phone;
+    if (!lead.province) return "请选择省份";
     if (!lead.city) return H5_COPY.lead.validation.city;
     if (!lead.privacyConsent) return H5_COPY.lead.validation.privacy;
     return "";
@@ -229,7 +262,7 @@ function App() {
     <main className="app-shell">
       <div className="ambient-grid" />
       <div className="ambient-beams" />
-      <div className="phone-stage">
+      <div className={`phone-stage ${isFigmaScreen ? "has-figma-screen" : ""}`}>
         <span className="env-badge">{ACTIVITY_CONFIG.environmentLabel}</span>
         {screen === "loading" && <LoadingScreen progress={loadingProgress} />}
         {screen === "home" && (
@@ -253,15 +286,26 @@ function App() {
           <ResultLoadingScreen hasError={resultError} onBack={() => setScreen("quiz")} onRetry={retryResult} />
         )}
         {screen === "result" && activeResult && (
-          <ResultScreen
-            result={activeResult}
-            onLead={() => {
-              audioEngine.play("tap");
-              setScreen("lead");
-            }}
-            onPoster={handlePosterSave}
-            onShare={handleShareClick}
-          />
+          activeResult.id === "level1" ? (
+            <FigmaLevel1ResultScreen
+              result={activeResult}
+              onBack={() => setScreen("quiz")}
+              onSaveAndLead={async () => {
+                await downloadPoster();
+                setScreen("lead");
+              }}
+            />
+          ) : (
+            <ResultScreen
+              result={activeResult}
+              onLead={() => {
+                audioEngine.play("tap");
+                setScreen("lead");
+              }}
+              onPoster={handlePosterSave}
+              onShare={handleShareClick}
+            />
+          )
         )}
         {screen === "lead" && activeResult && (
           <LeadScreen
@@ -347,7 +391,7 @@ function HomeScreen({
         <p>5道题，找到你的宅家人格<br />并匹配你所需要的静音等级</p>
       </div>
       <button className="figma-primary-button figma-home-cta" type="button" onClick={onStart}>
-        <span>{H5_COPY.home.startButton}</span>
+        <span>{H5_COPY.home.startButton.replace(/\s*→$/, "")}</span>
         <b aria-hidden="true">›</b>
       </button>
     </section>
@@ -451,7 +495,18 @@ function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean;
       <div className="figma-waveform figma-result-waveform" aria-hidden="true">
         {Array.from({ length: 30 }).map((_, index) => <i key={index} style={{ height: `${5 + ((index * 11) % 34)}px` }} />)}
       </div>
-      <img className="figma-analysis-panel" src="/assets/figma/figma-analysis-panel.png" alt="分析答题数据、识别宅家人格、匹配静音等级、生成专属报告" />
+      <div className="figma-analysis-panel" aria-label="分析答题数据、识别宅家人格、匹配静音等级、生成专属报告">
+        <i className="figma-analysis-dots" aria-hidden="true" />
+        <ul>
+          {ANALYSIS_STEPS.map((step, index) => (
+            <li key={step} style={{ "--step-delay": `${160 + index * 300}ms` } as CSSProperties}>
+              <span className="figma-analysis-check" aria-hidden="true" />
+              <strong>{step}</strong>
+            </li>
+          ))}
+        </ul>
+        <i className="figma-analysis-stripes" aria-hidden="true" />
+      </div>
       {hasError && (
         <button className="ghost-action figma-retry" type="button" onClick={onRetry}>
           <RotateCcw size={16} />
@@ -499,6 +554,44 @@ function ResultScreen({
   );
 }
 
+async function downloadDataUrl(dataUrl: string, filename: string) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function FigmaLevel1ResultScreen({
+  result,
+  onBack,
+  onSaveAndLead,
+}: {
+  result: QuizResult;
+  onBack: () => void;
+  onSaveAndLead: () => void | Promise<void>;
+}) {
+  return (
+    <section className="screen figma-screen figma-level1-result-screen" data-node-id="2004:2714">
+      <div className="figma-level1-result-photo" data-node-id="2004:2716" aria-hidden="true">
+        <img src={FIGMA_LEVEL1_RESULT_ASSETS.teaRoom} alt="" />
+      </div>
+      <img className="figma-level1-result-mask" src={FIGMA_LEVEL1_RESULT_ASSETS.mask} alt="" aria-hidden="true" />
+      <button className="figma-back-button figma-result-back-button" type="button" onClick={onBack} aria-label="返回">
+        <img src="/assets/figma/figma-back.png" alt="" />
+      </button>
+      <div className="figma-level1-result-title" aria-label={`${result.levelName}，${result.levelDisplay}`}>
+        <img src={FIGMA_LEVEL1_RESULT_ASSETS.title} alt="" aria-hidden="true" />
+      </div>
+      <button className="figma-result-save-button" type="button" onClick={() => void onSaveAndLead()}>
+        <span>点击保存并开始抽奖</span>
+      </button>
+    </section>
+  );
+}
+
 function LeadScreen({
   hint,
   lead,
@@ -516,6 +609,10 @@ function LeadScreen({
   onChange: (lead: LeadFormState) => void;
   onSubmit: () => void;
 }) {
+  const provinceCities = ACTIVITY_CONFIG.provinceCities;
+  const selectedProvince = provinceCities.find((item) => item.province === lead.province);
+  const cities = selectedProvince?.cities ?? [];
+
   return (
     <section className="screen figma-screen figma-lead-screen" data-result-hint={hint}>
       <img className="figma-bg" src="/assets/figma/figma-lead-bg.png" alt="" aria-hidden="true" />
@@ -544,19 +641,43 @@ function LeadScreen({
               onChange={(event) => onChange({ ...lead, phone: event.target.value.replace(/\D/g, "") })}
             />
           </Field>
-          <Field label={H5_COPY.lead.fields.city.label}>
-            <div className="select-wrap">
-              <select value={lead.city} onChange={(event) => onChange({ ...lead, city: event.target.value })}>
-                <option value="">{H5_COPY.lead.fields.city.placeholder}</option>
-                {ACTIVITY_CONFIG.mockCities.map((city) => (
-                  <option value={city} key={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={18} />
-            </div>
-          </Field>
+          <div className="figma-location-grid">
+            <Field label="省份">
+              <div className="select-wrap">
+                <select
+                  value={lead.province}
+                  onChange={(event) => onChange({ ...lead, province: event.target.value, city: "" })}
+                  required
+                >
+                  <option value="">请选择省份</option>
+                  {provinceCities.map((item) => (
+                    <option value={item.province} key={item.province}>
+                      {item.province}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={18} />
+              </div>
+            </Field>
+            <Field label={H5_COPY.lead.fields.city.label}>
+              <div className="select-wrap">
+                <select
+                  value={lead.city}
+                  onChange={(event) => onChange({ ...lead, city: event.target.value })}
+                  disabled={!lead.province}
+                  required
+                >
+                  <option value="">{H5_COPY.lead.fields.city.placeholder}</option>
+                  {cities.map((city) => (
+                    <option value={city} key={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={18} />
+              </div>
+            </Field>
+          </div>
         </div>
         <label className="figma-privacy-row">
           <input

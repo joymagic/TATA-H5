@@ -156,6 +156,8 @@ export const mockApi = {
         ...lead,
         name: lead.name.trim(),
         phone: normalizePhone(lead.phone),
+        province: lead.province.trim(),
+        city: lead.city.trim().replace(/市$/, ""),
       },
     });
     return delay({ ok: true }, 520);

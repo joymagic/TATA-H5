@@ -15,6 +15,7 @@ declare module "@tata/shared-config" {
     privacyPolicyUrl: string;
     shareUrl: string;
     mockCities: string[];
+    provinceCities: Array<{ province: string; cities: string[] }>;
     lottery: {
       drawChancePerUser: number;
       enforceActivityPeriod: boolean;

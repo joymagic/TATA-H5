@@ -35,6 +35,7 @@ export interface SessionState {
 export interface LeadFormState {
   name: string;
   phone: string;
+  province: string;
   city: string;
   privacyConsent: boolean;
 }

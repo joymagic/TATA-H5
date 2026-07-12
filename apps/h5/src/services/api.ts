@@ -22,7 +22,7 @@ const remoteApi = {
     return request<QuizResult>(sessionPath("quiz"), { method: "POST", body: JSON.stringify({ answers }) });
   },
   async submitLead(lead: LeadFormState) {
-    return request<{ ok: boolean }>(sessionPath("lead"), { method: "POST", body: JSON.stringify(lead) });
+    return request<{ ok: boolean }>(sessionPath("lead"), { method: "POST", body: JSON.stringify(normalizeLeadForApi(lead)) });
   },
   async drawLottery(idempotencyKey: string): Promise<LotteryPrize> {
     try {
@@ -50,6 +50,14 @@ function getDeviceId() {
   const next = `device_${crypto.randomUUID()}`;
   window.localStorage.setItem(DEVICE_KEY, next);
   return next;
+}
+
+function normalizeLeadForApi(lead: LeadFormState): LeadFormState {
+  return {
+    ...lead,
+    province: lead.province.trim(),
+    city: lead.city.trim().replace(/市$/, ""),
+  };
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
