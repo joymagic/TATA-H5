@@ -1610,8 +1610,21 @@ button:disabled {
   top: 87.7%;
 }
 
+.figma-quiz-screen::after {
+  position: absolute;
+  z-index: 1;
+  left: 87.733%;
+  top: calc(50% - min(72.267vw, 310.75px));
+  width: min(3.2vw, 13.76px);
+  height: min(3.2vw, 13.76px);
+  content: "";
+  background: #eddfd6;
+  pointer-events: none;
+}
+
 .figma-quiz-count {
   position: absolute;
+  z-index: 2;
   right: clamp(24px, 8vw, 34px);
   top: max(25px, calc(env(safe-area-inset-top) + 5px));
   display: flex;
@@ -1636,6 +1649,7 @@ button:disabled {
 
 .figma-quiz-progress {
   position: absolute;
+  z-index: 2;
   left: 8.27%;
   top: 10.35%;
   display: grid;
@@ -2282,5 +2296,14 @@ button:disabled {
     font-size: 12px;
     line-height: 1.2;
     white-space: normal;
+  }
+}
+
+@media (max-width: 479px) and (max-aspect-ratio: 375 / 812) {
+  .figma-quiz-screen::after {
+    left: calc(50% + 17.426dvh);
+    top: 16.626dvh;
+    width: 1.478dvh;
+    height: 1.478dvh;
   }
 }
