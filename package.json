@@ -15,7 +15,7 @@
     "build:admin": "pnpm --filter @tata/admin build",
     "build:pages": "pnpm build && node scripts/prepare-pages.cjs",
     "typecheck": "pnpm --filter @tata/h5 typecheck && pnpm --filter @tata/admin typecheck",
-    "test": "node tests/score.test.mjs && pnpm --filter @tata/api test",
+    "test": "node tests/score.test.mjs && node tests/browser.test.mjs && pnpm --filter @tata/api test",
     "generate:coupons": "node scripts/generate-coupons.cjs",
     "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs"
   },

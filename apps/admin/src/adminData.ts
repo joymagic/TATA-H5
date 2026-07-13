@@ -11,7 +11,7 @@ export type AdminView = "dashboard" | "users";
 export type DataSource = "mock" | "api";
 export type RuntimeEnv = "development" | "fat" | "testing" | "production";
 export type DateRange = "today" | "last7" | "last30" | "all";
-export type Personality = "悦己淡人" | "沉浸领主" | "觉主殿下" | "头号玩家";
+export type Personality = "悦己淡人" | "沉浸领主" | "安睡主宰" | "头号玩家";
 export type CityFilter = "all" | string;
 export type PersonalityFilter = "all" | Personality;
 export type PrizeFilter = "all" | string;
@@ -55,6 +55,7 @@ export interface LeadRecord {
   score: number;
   prize: string;
   couponCode: string;
+  couponIssuedAt?: string;
   channel: string;
 }
 
@@ -115,7 +116,7 @@ const MOCK_NOW = new Date("2026-07-28T22:00:00+08:00");
 
 export const CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都"] as const;
 export const CHANNELS = ["门店二维码", "品牌公众号", "微信朋友圈", "微信群", "小红书"] as const;
-export const PERSONALITIES: Personality[] = ["悦己淡人", "沉浸领主", "觉主殿下", "头号玩家"];
+export const PERSONALITIES: Personality[] = ["悦己淡人", "沉浸领主", "安睡主宰", "头号玩家"];
 export const PRIZE_LEVEL_CONFIGS = recalculatePrizeProbabilities(ACTIVITY_CONFIG.lottery.prizeLevels);
 export const PRIZES = PRIZE_LEVEL_CONFIGS.map((prize) => prize.name);
 
@@ -165,26 +166,26 @@ export const INITIAL_USER_FILTERS: UserFilters = {
 
 export const MOCK_LEADS: LeadRecord[] = [
   lead("L20260706001", "2026-07-28 10:24", "林若安", "13812345678", "上海", "头号玩家", "IV", 29, "特等奖", 0, "门店二维码"),
-  lead("L20260706002", "2026-07-28 10:41", "陈知夏", "13922345678", "北京", "觉主殿下", "III", 23, "一等奖", 6, "品牌公众号"),
+  lead("L20260706002", "2026-07-28 10:41", "陈知夏", "13922345678", "北京", "安睡主宰", "III", 23, "一等奖", 6, "品牌公众号"),
   lead("L20260706003", "2026-07-28 11:02", "周念一", "13732345678", "广州", "沉浸领主", "II", 17, "二等奖", 22, "微信朋友圈"),
   lead("L20260706004", "2026-07-28 11:28", "许言", "13642345678", "深圳", "悦己淡人", "I", 12, "三等奖", 31, "微信群"),
   lead("L20260706005", "2026-07-28 12:09", "赵清和", "13552345678", "杭州", "头号玩家", "IV", 31, "一等奖", 41, "小红书"),
-  lead("L20260706006", "2026-07-28 13:17", "吴予白", "13462345678", "成都", "觉主殿下", "III", 22, "二等奖", 54, "门店二维码"),
+  lead("L20260706006", "2026-07-28 13:17", "吴予白", "13462345678", "成都", "安睡主宰", "III", 22, "二等奖", 54, "门店二维码"),
   lead("L20260706007", "2026-07-28 14:36", "郑小满", "13372345678", "上海", "沉浸领主", "II", 18, "三等奖", 69, "品牌公众号"),
   lead("L20260706008", "2026-07-28 15:11", "王岚", "13282345678", "北京", "悦己淡人", "I", 11, "三等奖", 81, "微信朋友圈"),
   lead("L20260705001", "2026-07-27 10:18", "刘沐", "13192345678", "广州", "头号玩家", "IV", 28, "二等奖", 96, "微信群"),
-  lead("L20260705002", "2026-07-27 11:43", "何嘉木", "15912345678", "深圳", "觉主殿下", "III", 21, "三等奖", 112, "门店二维码"),
+  lead("L20260705002", "2026-07-27 11:43", "何嘉木", "15912345678", "深圳", "安睡主宰", "III", 21, "三等奖", 112, "门店二维码"),
   lead("L20260705003", "2026-07-27 13:27", "马亦宁", "15822345678", "杭州", "沉浸领主", "II", 16, "一等奖", 124, "品牌公众号"),
   lead("L20260705004", "2026-07-27 16:38", "宋可", "15732345678", "成都", "悦己淡人", "I", 10, "三等奖", 139, "小红书"),
-  lead("L20260704001", "2026-07-26 09:42", "唐柠", "15642345678", "上海", "觉主殿下", "III", 24, "二等奖", 151, "微信朋友圈"),
+  lead("L20260704001", "2026-07-26 09:42", "唐柠", "15642345678", "上海", "安睡主宰", "III", 24, "二等奖", 151, "微信朋友圈"),
   lead("L20260704002", "2026-07-26 11:05", "姜南", "15552345678", "北京", "头号玩家", "IV", 30, "特等奖", 169, "门店二维码"),
   lead("L20260704003", "2026-07-26 14:52", "曹屿", "15462345678", "广州", "沉浸领主", "II", 15, "三等奖", 187, "品牌公众号"),
   lead("L20260703001", "2026-07-25 10:33", "沈知微", "15372345678", "深圳", "悦己淡人", "I", 13, "三等奖", 205, "微信群"),
-  lead("L20260703002", "2026-07-25 13:09", "程方舟", "15282345678", "杭州", "觉主殿下", "III", 25, "二等奖", 223, "小红书"),
+  lead("L20260703002", "2026-07-25 13:09", "程方舟", "15282345678", "杭州", "安睡主宰", "III", 25, "二等奖", 223, "小红书"),
   lead("L20260702001", "2026-07-24 09:54", "叶初", "15192345678", "成都", "头号玩家", "IV", 32, "一等奖", 241, "品牌公众号"),
   lead("L20260702002", "2026-07-24 15:42", "韩书", "15012345678", "上海", "沉浸领主", "II", 19, "三等奖", 266, "门店二维码"),
   lead("L20260701001", "2026-07-23 10:12", "魏棠", "14922345678", "北京", "悦己淡人", "I", 9, "三等奖", 301, "微信朋友圈"),
-  lead("L20260701002", "2026-07-23 17:05", "顾西洲", "14832345678", "广州", "觉主殿下", "III", 20, "二等奖", 318, "门店二维码"),
+  lead("L20260701002", "2026-07-23 17:05", "顾西洲", "14832345678", "广州", "安睡主宰", "III", 20, "二等奖", 318, "门店二维码"),
   lead("L20260630001", "2026-07-23 11:31", "陆眠", "14742345678", "深圳", "头号玩家", "IV", 27, "一等奖", 336, "小红书"),
   lead("L20260629001", "2026-07-24 16:20", "苏晚", "14652345678", "杭州", "沉浸领主", "II", 14, "三等奖", 351, "品牌公众号"),
   lead("L20260628001", "2026-07-25 14:08", "钟予", "14562345678", "成都", "悦己淡人", "I", 8, "三等奖", 372, "微信群"),
@@ -301,7 +302,7 @@ export function getDashboardData(session: AdminSession, filters: DashboardFilter
       { label: "抽奖", value: lotteryUsers },
     ],
     channel: countBy(scopedLeads, (item) => item.channel, [...CHANNELS]),
-    city: countBy(scopedLeads, (item) => item.city, [...CITIES]),
+    city: countBy(scopedLeads, (item) => item.city),
   };
 }
 
@@ -312,7 +313,7 @@ export function getIssuedCoupons(session: AdminSession, filters: UserFilters, so
     status: "已发放",
     phone: maskPhone(item.phone),
     city: item.city,
-    issuedAt: item.submittedAt,
+    issuedAt: item.couponIssuedAt || item.submittedAt,
   }));
 }
 
@@ -461,13 +462,18 @@ function isWithinDateRange(value: string, range: DateRange, referenceNow = MOCK_
   return diffDays >= 0 && diffDays < 30;
 }
 
-function countBy<T>(rows: T[], pick: (row: T) => string, order: string[]): DistributionValue[] {
+export function getAvailableCities(sourceLeads: LeadRecord[] = MOCK_LEADS) {
+  return [...new Set(sourceLeads.map((item) => item.city).filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
+}
+
+function countBy<T>(rows: T[], pick: (row: T) => string, order?: string[]): DistributionValue[] {
   const counts = new Map<string, number>();
   rows.forEach((row) => {
     const key = pick(row);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   });
-  return order.map((label) => ({ label, value: counts.get(label) ?? 0 }));
+  const labels = order ?? [...counts.keys()].sort((left, right) => (counts.get(right)! - counts.get(left)!) || left.localeCompare(right, "zh-CN"));
+  return labels.map((label) => ({ label, value: counts.get(label) ?? 0 }));
 }
 
 function parseAdminDate(value: string) {

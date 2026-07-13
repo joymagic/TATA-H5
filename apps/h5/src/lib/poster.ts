@@ -3,29 +3,35 @@ import { ACTIVITY_CONFIG } from "@tata/shared-config";
 import type { QuizResult } from "../types";
 
 const POSTER_LOGO = "/assets/figma/figma-tata-logo.png";
+const POSTER_TITLE = "/assets/figma/result-titles";
+const POSTER_ASSET_VERSION = "20260713-2";
 
 const POSTER_META = {
   level1: {
     bg: "#d6b36d",
     accent: "#956a3f",
+    qrBg: "#f5dfb7",
     roman: "Ⅰ",
     value: "隔声量20(dB)≤Rw+C<25(dB)",
   },
   level2: {
     bg: "#c18be4",
     accent: "#4b2b7c",
+    qrBg: "#ead8f5",
     roman: "Ⅱ",
     value: "隔声量25(dB)≤Rw+C<30(dB)",
   },
   level3: {
     bg: "#bed8c7",
     accent: "#203c36",
+    qrBg: "#d9ecdf",
     roman: "Ⅲ",
     value: "隔声量30(dB)≤Rw+C<35(dB)",
   },
   level4: {
     bg: "#b9d8ef",
     accent: "#1a75b4",
+    qrBg: "#dcecf7",
     roman: "Ⅳ",
     value: "隔声量Rw+C≥35(dB)",
   },
@@ -63,9 +69,10 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   if (!context) throw new Error("Canvas is not supported");
 
   const meta = POSTER_META[result.productKey];
-  const [logo, scene] = await Promise.all([
+  const [logo, scene, levelTitle] = await Promise.all([
     loadImage(POSTER_LOGO),
-    loadImage(sceneUrl || `/assets/result-backgrounds/${result.productKey}/1.png`),
+    loadImage(sceneUrl || `/assets/result-backgrounds-web/${result.productKey}/1.webp`),
+    loadImage(`${POSTER_TITLE}/${result.productKey}.png?v=${POSTER_ASSET_VERSION}`),
   ]);
 
   context.scale(2, 2);
@@ -74,15 +81,15 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   context.drawImage(logo, 107, 22, 161, 33);
 
   coverImage(context, scene, 42, 68, 292, 520);
-  drawLevel(context, result, meta);
+  context.drawImage(levelTitle, 84, 101, 207, 134);
   drawCard(context, result, meta);
-  drawQrArea(context);
+  drawQrArea(context, meta.qrBg);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, ACTIVITY_CONFIG.shareUrl, {
     width: 154,
     margin: 1,
-    color: { dark: "#2b2424", light: "#f5dfb7" },
+    color: { dark: "#2b2424", light: meta.qrBg },
   });
   context.drawImage(qrCanvas, 72, 595, 82, 82);
 
@@ -93,38 +100,6 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   context.fillText("我的静音人格海报", 169, 633);
 
   return canvas.toDataURL("image/png");
-}
-
-function drawLevel(
-  context: CanvasRenderingContext2D,
-  result: QuizResult,
-  meta: (typeof POSTER_META)[QuizResult["productKey"]],
-) {
-  context.save();
-  context.fillStyle = meta.accent;
-  context.textAlign = "center";
-  context.textBaseline = "alphabetic";
-  context.font = '900 46px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  context.fillText(result.levelName, 187.5, 129);
-  context.font = '900 34px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  context.fillText(`${meta.roman}级静音`, 187.5, 170);
-  context.font = '700 13px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  context.fillText(meta.value, 187.5, 196);
-  context.strokeStyle = meta.accent;
-  context.lineWidth = 3;
-  [84, 91, 98].forEach((x) => {
-    context.beginPath();
-    context.moveTo(x, 105);
-    context.lineTo(x, 119);
-    context.stroke();
-  });
-  [277, 284, 291].forEach((x) => {
-    context.beginPath();
-    context.moveTo(x, 105);
-    context.lineTo(x, 119);
-    context.stroke();
-  });
-  context.restore();
 }
 
 function drawCard(
@@ -163,13 +138,13 @@ function formatDescription(result: QuizResult) {
     .replace("I级", `${roman}级`);
 }
 
-function drawQrArea(context: CanvasRenderingContext2D) {
+function drawQrArea(context: CanvasRenderingContext2D, background: string) {
   context.save();
   context.shadowColor = "#2b2424";
   context.shadowBlur = 0;
   context.shadowOffsetX = 4;
   context.shadowOffsetY = 5;
-  context.fillStyle = "#f5dfb7";
+  context.fillStyle = background;
   roundedRect(context, 58, 585, 102, 96, 4);
   context.fill();
   context.restore();

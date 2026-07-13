@@ -20,10 +20,10 @@ const PRIZE_BY_AMOUNT = new Map([
   [10, { code: "THIRD", name: "三等奖", probability: 75.7575757576 }],
 ]);
 const RESULT_RANGES = [
-  { id: "level1", level: "I", levelName: "柔静级", levelDisplay: "I 级柔静级", title: "悦己淡人", scene: "茶室品茗", minScore: 8, maxScore: 13, description: "家就是充电站、客厅闲坐、茶室品茗，20-25dB 基础隔音，适配所有休闲场景", productKey: "level1" },
-  { id: "level2", level: "II", levelName: "沉静级", levelDisplay: "II 级沉静级", title: "沉浸领主", scene: "书房阅读", minScore: 14, maxScore: 19, description: "独处至上星人，看书、娱乐、学习，25-30dB 隔绝外界噪音，独享沉浸小世界", productKey: "level2" },
-  { id: "level3", level: "III", levelName: "宁静级", levelDisplay: "III 级宁静级", title: "觉主殿下", scene: "卧室深睡", minScore: 20, maxScore: 25, description: "睡眠刚需人，一点噪音直接失眠，30-35dB 隔绝车流、杂音，整夜深睡守护", productKey: "level3" },
-  { id: "level4", level: "IV", levelName: "巅静级", levelDisplay: "IV 级巅静级", title: "头号玩家", scene: "电竞开黑", minScore: 26, maxScore: 32, description: "激情上分天花板，不被打扰也不打扰家人，≥35dB 专业隔音，赛场状态直接拉满", productKey: "level4" },
+  { id: "level1", level: "I", levelName: "柔静级", levelDisplay: "I 级柔静级", title: "悦己淡人", scene: "茶室品茗", minScore: 8, maxScore: 13, description: "家就是我的充电站，日常喜欢客厅闲坐、茶室品茗，我需要柔静级 I级静音，满足我的基础隔音需求。", productKey: "level1" },
+  { id: "level2", level: "II", levelName: "沉静级", levelDisplay: "II 级沉静级", title: "沉浸领主", scene: "书房阅读", minScore: 14, maxScore: 19, description: "我是独处至上星人，在家喜欢看书、娱乐、学习，我需要沉静级 II级静音，让我独享沉浸小世界。", productKey: "level2" },
+  { id: "level3", level: "III", levelName: "宁静级", levelDisplay: "III 级宁静级", title: "安睡主宰", scene: "卧室深睡", minScore: 20, maxScore: 25, description: "我是睡眠刚需人，一点噪音直接失眠，我需要宁静级 III级静音，给我整夜深睡守护。", productKey: "level3" },
+  { id: "level4", level: "IV", levelName: "臻静级", levelDisplay: "IV 级臻静级", title: "头号玩家", scene: "电竞开黑", minScore: 26, maxScore: 32, description: "宅家也能当头号玩家，热衷激情上分和观影，我需要臻静级 IV级静音，尽情释放自己的热爱。", productKey: "level4" },
 ];
 
 const db = new DatabaseSync(DB_PATH);
@@ -157,7 +157,7 @@ async function route(request, response) {
     const admin = requireAdmin(request);
     const leads = getAdminLeads(admin);
     const dashboard = getDashboard(admin, leads);
-    const issuedCoupons = leads.filter((item) => item.couponCode).map((item) => ({ code: item.couponCode, prize: item.prize, status: "已发放", phone: maskPhone(item.phone), city: item.city, issuedAt: item.submittedAt }));
+    const issuedCoupons = leads.filter((item) => item.couponCode && item.couponCode !== "—").map((item) => ({ code: item.couponCode, prize: item.prize, status: "已发放", phone: maskPhone(item.phone), city: item.city, issuedAt: item.couponIssuedAt || item.submittedAt }));
     const couponInventory = admin.role === "HEADQUARTERS_ADMIN" ? db.prepare("SELECT id, code, amount, status, batch_id, created_at FROM coupons ORDER BY status DESC, id LIMIT 80").all().map(toCouponRecord) : [];
     const prizeConfigs = [...PRIZE_BY_AMOUNT.entries()].map(([amount, prize]) => ({ ...prize, total: Number(db.prepare("SELECT COUNT(*) count FROM coupons WHERE amount = ?").get(amount).count) }));
     return json(response, 200, { data: { dashboard, leads, issuedCoupons, couponInventory, prizeConfigs } });
@@ -177,6 +177,7 @@ function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS lottery_draws (id TEXT PRIMARY KEY, session_id TEXT UNIQUE NOT NULL REFERENCES sessions(id), lead_id TEXT NOT NULL REFERENCES leads(id), phone TEXT UNIQUE NOT NULL, device_id TEXT UNIQUE NOT NULL, coupon_id TEXT UNIQUE NOT NULL REFERENCES coupons(id), prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_sessions (token TEXT PRIMARY KEY, username TEXT NOT NULL, role TEXT NOT NULL, city TEXT NOT NULL, expires_at TEXT NOT NULL);
   `);
+  db.prepare("UPDATE sessions SET result_title = ? WHERE result_title = ?").run("安睡主宰", "觉主殿下");
   const count = Number(db.prepare("SELECT COUNT(*) count FROM coupons").get().count);
   if (count > 0) return;
   const source = JSON.parse(readFileSync(resolve(ROOT, "data/coupons/coupons.json"), "utf8"));
@@ -209,10 +210,10 @@ function requireAdmin(request) {
 
 function getAdminLeads(admin) {
   const rows = db.prepare(`SELECT l.id, l.submitted_at, l.name, l.phone, l.city, s.result_title, s.result_level, s.score, s.channel,
-    d.prize_name, c.code coupon_code FROM leads l JOIN sessions s ON s.id = l.session_id
+    d.prize_name, d.created_at draw_created_at, c.code coupon_code FROM leads l JOIN sessions s ON s.id = l.session_id
     LEFT JOIN lottery_draws d ON d.session_id = s.id LEFT JOIN coupons c ON c.id = d.coupon_id
     ORDER BY l.submitted_at DESC`).all();
-  return rows.filter((row) => admin.role !== "CITY_ADMIN" || row.city === admin.city).map((row) => ({ id: row.id, submittedAt: formatAdminDate(new Date(row.submitted_at)), name: row.name, phone: row.phone, city: row.city, personality: row.result_title || "悦己淡人", level: row.result_level || "I", score: Number(row.score || 0), prize: row.prize_name || "待抽奖", couponCode: row.coupon_code || "—", channel: row.channel }));
+  return rows.filter((row) => admin.role !== "CITY_ADMIN" || row.city === admin.city).map((row) => ({ id: row.id, submittedAt: formatAdminDate(new Date(row.submitted_at)), name: row.name, phone: row.phone, city: row.city, personality: row.result_title || "悦己淡人", level: row.result_level || "I", score: Number(row.score || 0), prize: row.prize_name || "待抽奖", couponCode: row.coupon_code || "—", couponIssuedAt: row.draw_created_at ? formatAdminDate(new Date(row.draw_created_at)) : "", channel: row.channel }));
 }
 
 function getDashboard(admin, leads) {
@@ -227,17 +228,21 @@ function getDashboard(admin, leads) {
   ].map(([label, value, hint]) => ({ label, value, hint }));
   return {
     metrics,
-    personality: countBy(leads, "personality", ["悦己淡人", "沉浸领主", "觉主殿下", "头号玩家"]),
+    personality: countBy(leads, "personality", ["悦己淡人", "沉浸领主", "安睡主宰", "头号玩家"]),
     funnel: metrics.map((item, index) => ({ label: ["访问", "开始", "完成", "结果页", "客资", "抽奖"][index], value: item.value })),
     channel: countBy(leads, "channel", ["direct", "门店二维码", "品牌公众号", "微信朋友圈", "微信群", "小红书"]),
-    city: countBy(leads, "city", ["北京", "上海", "广州", "深圳", "杭州", "成都"]),
+    city: countBy(leads, "city"),
   };
 }
 
 function countBy(rows, key, order) {
   const counts = new Map();
-  for (const row of rows) counts.set(row[key], (counts.get(row[key]) || 0) + 1);
-  return order.map((label) => ({ label, value: counts.get(label) || 0 }));
+  for (const row of rows) {
+    const label = cleanText(row[key], 100);
+    if (label) counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  const labels = order || [...counts.keys()].sort((left, right) => (counts.get(right) - counts.get(left)) || left.localeCompare(right, "zh-CN"));
+  return labels.map((label) => ({ label, value: counts.get(label) || 0 }));
 }
 
 function choosePrize(seed) {

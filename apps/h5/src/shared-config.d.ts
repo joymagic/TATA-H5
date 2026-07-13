@@ -88,3 +88,16 @@ declare module "@tata/shared-config" {
     productKey: AssetProductKey;
   }>;
 }
+
+declare module "@tata/shared-config/coupons" {
+  export interface CouponRecord {
+    id: string;
+    code: string;
+    amount: number;
+    status: "available" | "reserved" | "redeemed";
+    batchId: string;
+    createdAt: string;
+  }
+
+  export const COUPONS: CouponRecord[];
+}

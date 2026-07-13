@@ -1,16 +1,18 @@
 import {
   Check,
   ChevronDown,
-  Music,
+  ChevronRight,
   Music2,
   RotateCcw,
-  VolumeX,
+  ScrollText,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ACTIVITY_CONFIG, H5_COPY, QUESTIONS } from "@tata/shared-config";
 import { audioEngine } from "./lib/audio";
+import { isWeChatBrowser } from "./lib/browser";
 import { generatePoster } from "./lib/poster";
+import { LEGAL_DOCUMENTS, type LegalDocumentKey } from "./legalContent";
 import { LotteryRuleError, activityApi } from "./services/api";
 import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, Screen, SessionState } from "./types";
 
@@ -24,7 +26,7 @@ const initialLead: LeadFormState = {
 
 const ANALYSIS_STEPS = ["分析答题数据", "识别宅家人格", "匹配静音等级", "生成专属报告"];
 const RESULT_LOADING_MIN_MS = 2400;
-const RESULT_IMAGE_COUNT = 4;
+const RESULT_IMAGE_COUNT = 3;
 const RESULT_LEVEL_VALUES = {
   level1: "隔声量20(dB)≤Rw+C<25(dB)",
   level2: "隔声量25(dB)≤Rw+C<30(dB)",
@@ -37,9 +39,34 @@ const RESULT_THEMES = {
   level3: { bg: "#bed8c7", accent: "#203c36", button: "#d5efd9", roman: "Ⅲ" },
   level4: { bg: "#b9d8ef", accent: "#1a75b4", button: "#b9d8ef", roman: "Ⅳ" },
 } as const;
+const LOTTERY_PRIZE_TARGET_ROTATION: Record<LotteryPrize["prizeLevel"], number> = {
+  SPECIAL: 0,
+  FIRST: 270,
+  THIRD: 180,
+  SECOND: 90,
+};
+const LOTTERY_FAST_SPIN_MS = 2000;
+const LOTTERY_FAST_SPIN_ROUNDS = 6;
+const LOTTERY_SETTLE_MS = 650;
+const UPDATED_ASSET_VERSION = "20260713-4";
+const QUIZ_VISUAL_PATHS = [
+  "/assets/figma/quiz-web/quiz-question-01.webp",
+  "/assets/figma/quiz-web/quiz-question-02.webp",
+  "/assets/figma/quiz-web/quiz-question-03.webp",
+  "/assets/figma/quiz-web/quiz-question-04.webp",
+  `/assets/figma/quiz-web/quiz-question-05.webp?v=${UPDATED_ASSET_VERSION}`,
+];
+const WAVEFORM_HEIGHTS = [8, 14, 24, 34, 20, 12, 28, 38, 18, 30, 16, 36, 22, 12, 29, 39, 25, 14, 32, 20, 37, 17, 27, 39, 23, 12, 31, 18, 26, 10];
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+function nextWheelRotation(currentRotation: number, prizeLevel: LotteryPrize["prizeLevel"]) {
+  const targetRotation = LOTTERY_PRIZE_TARGET_ROTATION[prizeLevel];
+  const currentNormalized = ((currentRotation % 360) + 360) % 360;
+  const deltaToTarget = (targetRotation - currentNormalized + 360) % 360;
+  return currentRotation + (deltaToTarget === 0 ? 360 : deltaToTarget);
 }
 
 function App() {
@@ -54,13 +81,45 @@ function App() {
   const [validation, setValidation] = useState("");
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [wheelSpinMode, setWheelSpinMode] = useState<"idle" | "spinning" | "settling">("idle");
   const [prize, setPrize] = useState<LotteryPrize | null>(null);
   const [posterDataUrl, setPosterDataUrl] = useState("");
+  const [posterPreviewOpen, setPosterPreviewOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [resultError, setResultError] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
   const selectTimer = useRef<number | null>(null);
+  const currentQuestion = QUESTIONS[questionIndex];
+  const activeResult = result;
+  const weChatBrowser = isWeChatBrowser(window.navigator.userAgent);
+  const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      QUIZ_VISUAL_PATHS.forEach((src) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.src = src;
+      });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (screen !== "result" || !activeResult || !resultBackground) return;
+    let cancelled = false;
+    void generatePoster(activeResult, resultBackground)
+      .then((dataUrl) => {
+        if (!cancelled) setPosterDataUrl(dataUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [screen, activeResult, resultBackground]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -86,10 +145,6 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const currentQuestion = QUESTIONS[questionIndex];
-  const activeResult = result;
-  const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
-
   const leadHint = useMemo(() => {
     if (!activeResult) return "";
     return `${activeResult.title} · ${activeResult.levelDisplay}`;
@@ -105,6 +160,9 @@ function App() {
     setLead(initialLead);
     setPrize(null);
     setPosterDataUrl("");
+    setPosterPreviewOpen(false);
+    setWheelSpinMode("idle");
+    setWheelRotation(0);
     setValidation("");
     setScreen("quiz");
   }
@@ -170,7 +228,7 @@ function App() {
     if (!activeResult) return;
     audioEngine.play("tap");
     try {
-      const dataUrl = await generatePoster(activeResult, resultBackground);
+      const dataUrl = posterDataUrl || await generatePoster(activeResult, resultBackground);
       await downloadDataUrl(dataUrl, `TATA-${activeResult.title}-静音人格海报.png`);
     } catch {
       setToast(H5_COPY.system.posterFailed);
@@ -191,10 +249,12 @@ function App() {
     const error = validateLead();
     setValidation(error);
     if (error) return;
+    releaseFormFocus();
     setIsSubmittingLead(true);
     try {
       await activityApi.submitLead(lead);
       setScreen("lottery");
+      window.requestAnimationFrame(() => window.scrollTo(0, 0));
     } catch {
       setValidation(H5_COPY.lead.validation.submitFailed);
     } finally {
@@ -206,14 +266,21 @@ function App() {
     if (isDrawing) return;
     audioEngine.play("spin");
     setIsDrawing(true);
+    setWheelSpinMode("spinning");
+    setWheelRotation((rotation) => rotation + LOTTERY_FAST_SPIN_ROUNDS * 360);
+    const spinStartedAt = Date.now();
     try {
       const nextPrize = await activityApi.drawLottery(`${session?.sessionToken ?? "session"}-${Date.now()}`);
+      await wait(Math.max(0, LOTTERY_FAST_SPIN_MS - (Date.now() - spinStartedAt)));
       setPrize(nextPrize);
+      setWheelSpinMode("settling");
+      setWheelRotation((rotation) => nextWheelRotation(rotation, nextPrize.prizeLevel));
       window.setTimeout(() => {
         audioEngine.play("win");
         setScreen("lotteryResult");
         setIsDrawing(false);
-      }, 900);
+        setWheelSpinMode("idle");
+      }, LOTTERY_SETTLE_MS);
     } catch (error) {
       if (error instanceof LotteryRuleError && error.code === "LEAD_REQUIRED") {
         setToast(H5_COPY.system.drawLeadRequired);
@@ -223,6 +290,7 @@ function App() {
         setToast(H5_COPY.system.drawFailed);
       }
       setIsDrawing(false);
+      setWheelSpinMode("idle");
     }
   }
 
@@ -237,6 +305,9 @@ function App() {
     setLead(initialLead);
     setPrize(null);
     setPosterDataUrl("");
+    setPosterPreviewOpen(false);
+    setWheelSpinMode("idle");
+    setWheelRotation(0);
     setValidation("");
     setScreen("home");
   }
@@ -278,10 +349,15 @@ function App() {
             result={activeResult}
             background={resultBackground}
             onBack={() => setScreen("quiz")}
-            onSaveAndLead={async () => {
-              await downloadPoster();
+            onSaveAndLead={() => {
+              if (weChatBrowser) {
+                setPosterPreviewOpen(true);
+                return;
+              }
+              void downloadPoster();
               setScreen("lead");
             }}
+            saveLabel={weChatBrowser ? "长按保存海报后开始抽奖" : "点击保存并开始抽奖"}
           />
         )}
         {screen === "lead" && activeResult && (
@@ -292,24 +368,36 @@ function App() {
             isSubmitting={isSubmittingLead}
             onBack={() => setScreen("result")}
             onChange={setLead}
+            onLegalDocument={setLegalDocument}
             onSubmit={submitLead}
           />
         )}
         {screen === "lottery" && (
           <LotteryScreen
             isDrawing={isDrawing}
+            spinMode={wheelSpinMode}
+            rotation={wheelRotation}
             onBack={() => setScreen("lead")}
             onDraw={drawLottery}
           />
         )}
         {screen === "lotteryResult" && prize && <LotteryResultScreen prize={prize} onBackHome={backHome} />}
         {rulesOpen && <ActivityRulesModal onClose={() => setRulesOpen(false)} />}
+        {legalDocument && (
+          <LegalDocumentModal documentKey={legalDocument} onClose={() => setLegalDocument(null)} />
+        )}
+        {posterPreviewOpen && (
+          <WeChatPosterPreview
+            dataUrl={posterDataUrl}
+            onClose={() => setPosterPreviewOpen(false)}
+            onContinue={() => {
+              setPosterPreviewOpen(false);
+              setScreen("lead");
+              window.requestAnimationFrame(() => window.scrollTo(0, 0));
+            }}
+          />
+        )}
       </div>
-      {posterDataUrl && (
-        <div className="poster-modal" role="dialog" aria-modal="true" onClick={() => setPosterDataUrl("")}>
-          <img src={posterDataUrl} alt="静音人格海报" />
-        </div>
-      )}
       {toast && <div className="toast">{toast}</div>}
     </main>
   );
@@ -320,16 +408,25 @@ function LoadingScreen({ progress }: { progress: number }) {
     <section className="screen figma-screen figma-loading-screen">
       <img className="figma-bg" src="/assets/figma/figma-loading-bg.png" alt="" aria-hidden="true" />
       <img className="figma-loading-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
-      <div className="figma-waveform" aria-hidden="true">
-        {Array.from({ length: 30 }).map((_, index) => (
-          <i key={index} style={{ height: `${5 + ((index * 11) % 34)}px` }} />
-        ))}
-      </div>
+      <Waveform />
       <div className="figma-progress-track">
         <span style={{ width: `${progress}%` }} />
       </div>
       <p className="figma-loading-percent">{progress}%</p>
     </section>
+  );
+}
+
+function Waveform({ className = "" }: { className?: string }) {
+  return (
+    <div className={`figma-waveform ${className}`.trim()} aria-hidden="true">
+      {WAVEFORM_HEIGHTS.map((height, index) => (
+        <i
+          key={`${height}-${index}`}
+          style={{ "--wave-height": `${height}px`, "--wave-delay": `${index * -43}ms` } as CSSProperties}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -349,26 +446,24 @@ function HomeScreen({
       <img className="figma-bg" src="/assets/figma/figma-home-bg.png" alt="" aria-hidden="true" />
       <img className="figma-home-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
       <div className="figma-home-actions">
-        <button type="button" onClick={onAudioToggle} aria-label="背景音乐开关">
-          {audioEnabled ? <Music2 size={13} /> : <VolumeX size={13} />}
+        <button type="button" onClick={onAudioToggle} aria-label="背景音乐开关" aria-pressed={audioEnabled}>
+          <Music2 size={13} />
           <span>背景音乐</span>
         </button>
         <button type="button" onClick={onRules}>
-          <Music size={13} />
+          <ScrollText size={13} />
           <span>活动规则</span>
         </button>
       </div>
       <div className="figma-home-copy">
-        <h1>
-          测测你的<span>宅家人格</span>
-          <br />
-          <strong>静化</strong>到哪一级了
-        </h1>
+        <div className="figma-home-title-frame">
+          <img src={`/assets/figma/figma-home-title.png?v=${UPDATED_ASSET_VERSION}`} alt="测测你的宅家人格 静化到哪一级了" />
+        </div>
         <p>5道题，找到你的宅家人格<br />并匹配你所需要的静音等级</p>
       </div>
       <button className="figma-primary-button figma-home-cta" type="button" onClick={onStart}>
         <span>{H5_COPY.home.startButton.replace(/\s*→$/, "")}</span>
-        <b aria-hidden="true">›</b>
+        <ChevronRight aria-hidden="true" />
       </button>
     </section>
   );
@@ -377,6 +472,9 @@ function HomeScreen({
 function ActivityRulesModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="rules-backdrop" role="presentation" onClick={onClose}>
+      <button className="rules-close" type="button" onClick={onClose} aria-label="关闭活动规则">
+        <X size={20} />
+      </button>
       <section
         className="rules-modal"
         role="dialog"
@@ -389,20 +487,74 @@ function ActivityRulesModal({ onClose }: { onClose: () => void }) {
             <span className="rules-eyebrow">{H5_COPY.rules.brand}</span>
             <h2 id="activity-rules-title">{H5_COPY.rules.title}</h2>
           </div>
-          <button className="rules-close" type="button" onClick={onClose} aria-label="关闭活动规则">
-            <X size={18} />
-          </button>
         </header>
-        <div className="rules-list">
-          {H5_COPY.rules.sections.map((section, index) => (
-            <article className="rules-item" key={section.title}>
-              <span className="rules-index">{String(index + 1).padStart(2, "0")}</span>
-              <div>
-                <strong>{section.title}</strong>
-                {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-              </div>
+        <div className="rules-scroll-body">
+          <div className="rules-list">
+            {H5_COPY.rules.sections.map((section, index) => (
+              <article className="rules-item" key={section.title}>
+                <span className="rules-index">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <strong>{section.title}</strong>
+                  {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LegalDocumentModal({ documentKey, onClose }: { documentKey: LegalDocumentKey; onClose: () => void }) {
+  const document = LEGAL_DOCUMENTS[documentKey];
+  const titleId = `legal-document-${documentKey}`;
+
+  return (
+    <div className="rules-backdrop legal-backdrop" role="presentation" onClick={onClose}>
+      <button className="rules-close" type="button" onClick={onClose} aria-label={`关闭${document.title}`}>
+        <X size={20} />
+      </button>
+      <section
+        className="rules-modal legal-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="rules-modal-header legal-modal-header">
+          <div>
+            <span className="rules-eyebrow">TATA 木门</span>
+            <h2 id={titleId}>{document.title}</h2>
+          </div>
+        </header>
+        <div className="rules-scroll-body legal-scroll-body">
+          {document.sections.map((section) => (
+            <article className="legal-section" key={section.title}>
+              <h3>{section.title}</h3>
+              {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {section.items && (
+                <ol>
+                  {section.items.map((item) => <li key={item}>{item}</li>)}
+                </ol>
+              )}
+              {section.table && (
+                <div className="legal-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>{section.table.headers.map((header) => <th key={header}>{header}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {section.table.rows.map((row) => (
+                        <tr key={row.join("-")}>{row.map((cell) => <td key={cell}>{cell}</td>)}</tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </article>
           ))}
+          {document.effectiveDate && <p className="legal-effective-date">{document.effectiveDate}</p>}
         </div>
       </section>
     </div>
@@ -437,20 +589,36 @@ function QuizScreen({
         <i><b style={{ width: `${((questionIndex + 1) / QUESTIONS.length) * 100}%` }} /></i>
         <span>05</span>
       </div>
-      <img className="figma-quiz-visual" src="/assets/figma/figma-quiz-visual.png" alt="居家静音场景" />
+      <div className="figma-quiz-visual-frame">
+        <div className="figma-quiz-photo-shell">
+          <img
+            className="figma-quiz-visual"
+            src={QUIZ_VISUAL_PATHS[questionIndex]}
+            alt={`第 ${questionIndex + 1} 题场景`}
+            decoding="async"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = "/assets/figma/figma-quiz-visual.png";
+            }}
+          />
+        </div>
+        <span className="figma-quiz-visual-index">{String(questionIndex + 1).padStart(3, "0")}</span>
+        <i className="figma-quiz-visual-stripes" aria-hidden="true" />
+      </div>
       <h1 className="figma-question-title">{question.title}</h1>
       <div className="figma-option-list">
         {question.options.map((option) => (
-          <button
-            key={option.key}
-            className={`figma-option-button ${answer === option.key ? "is-selected" : ""}`}
-            type="button"
-            onClick={() => onSelect(option.key as OptionKey)}
-          >
-            <strong>{option.key}</strong>
-            <span>{option.text}</span>
-            <i aria-hidden="true">{answer === option.key ? <Check size={15} strokeWidth={3} /> : null}</i>
-          </button>
+          <div className={`figma-option-shell ${answer === option.key ? "is-selected" : ""}`} key={option.key}>
+            <button
+              className="figma-option-button"
+              type="button"
+              onClick={() => onSelect(option.key as OptionKey)}
+            >
+              <strong>{option.key}</strong>
+              <span>{option.text}</span>
+              <i aria-hidden="true">{answer === option.key ? <Check size={15} strokeWidth={3} /> : null}</i>
+            </button>
+          </div>
         ))}
       </div>
     </section>
@@ -468,9 +636,7 @@ function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean;
         <small>ANALYZING</small>
         <h1>宅家人格<br /><strong>静化</strong>报告生成中</h1>
       </div>
-      <div className="figma-waveform figma-result-waveform" aria-hidden="true">
-        {Array.from({ length: 30 }).map((_, index) => <i key={index} style={{ height: `${5 + ((index * 11) % 34)}px` }} />)}
-      </div>
+      <Waveform className="figma-result-waveform" />
       <div className="figma-analysis-panel" aria-label="分析答题数据、识别宅家人格、匹配静音等级、生成专属报告">
         <i className="figma-analysis-dots" aria-hidden="true" />
         <ul>
@@ -493,7 +659,7 @@ function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean;
   );
 }
 
-async function downloadDataUrl(dataUrl: string, filename: string) {
+function downloadDataUrl(dataUrl: string, filename: string) {
   const link = document.createElement("a");
   link.href = dataUrl;
   link.download = filename;
@@ -503,8 +669,13 @@ async function downloadDataUrl(dataUrl: string, filename: string) {
   link.remove();
 }
 
+function releaseFormFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  window.scrollTo(0, 0);
+}
+
 function getResultBackgroundUrl(productKey: QuizResult["productKey"], index: number) {
-  return `/assets/result-backgrounds/${productKey}/${index}.png`;
+  return `/assets/result-backgrounds-web/${productKey}/${index}.webp`;
 }
 
 function pickResultBackground(productKey: QuizResult["productKey"]) {
@@ -536,11 +707,13 @@ function FigmaResultScreen({
   background,
   onBack,
   onSaveAndLead,
+  saveLabel,
 }: {
   result: QuizResult;
   background: string;
   onBack: () => void;
   onSaveAndLead: () => void | Promise<void>;
+  saveLabel: string;
 }) {
   const theme = RESULT_THEMES[result.productKey];
   return (
@@ -553,40 +726,86 @@ function FigmaResultScreen({
         <button className="figma-back-button figma-result-visible-back" type="button" onClick={onBack} aria-label="返回">
           <img src="/assets/figma/figma-back.png" alt="" />
         </button>
-        <div className="figma-dynamic-level">
-          <span aria-hidden="true" />
-          <strong>{result.levelName}</strong>
-          <em>{theme.roman}级静音</em>
-          <small>{RESULT_LEVEL_VALUES[result.productKey]}</small>
-        </div>
+        <img
+          className="figma-result-title-art"
+          src={`/assets/figma/result-titles/${result.productKey}.png?v=${UPDATED_ASSET_VERSION}`}
+          alt={`${result.levelName} ${theme.roman}级静音 ${RESULT_LEVEL_VALUES[result.productKey]}`}
+        />
         <article className="figma-dynamic-card">
           <span>静音人格</span>
           <h1>{result.title}</h1>
           <p>{formatResultDescription(result)}</p>
         </article>
         <button className="figma-hit-area figma-result-save-hit" type="button" onClick={() => void onSaveAndLead()}>
-          点击保存并开始抽奖
+          <span>{saveLabel}</span>
         </button>
       </div>
     </section>
   );
 }
 
+function WeChatPosterPreview({
+  dataUrl,
+  onClose,
+  onContinue,
+}: {
+  dataUrl: string;
+  onClose: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="wechat-poster-backdrop" role="presentation">
+      <section className="wechat-poster-dialog" role="dialog" aria-modal="true" aria-labelledby="wechat-poster-title">
+        <button className="wechat-poster-close" type="button" onClick={onClose} aria-label="关闭海报">
+          <X size={20} />
+        </button>
+        <div className="wechat-poster-heading">
+          <h2 id="wechat-poster-title">长按保存专属海报</h2>
+          <p>长按下方海报，选择“保存到手机”</p>
+        </div>
+        <div className="wechat-poster-image">
+          {dataUrl ? <img src={dataUrl} alt="静音人格海报" /> : <span>专属海报生成中...</span>}
+        </div>
+        <button className="wechat-poster-continue" type="button" onClick={onContinue}>
+          我已保存，开始抽奖
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function LotteryScreen({
   isDrawing,
+  spinMode,
+  rotation,
   onBack,
   onDraw,
 }: {
   isDrawing: boolean;
+  spinMode: "idle" | "spinning" | "settling";
+  rotation: number;
   onBack: () => void;
   onDraw: () => void;
 }) {
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-screen">
       <div className="figma-static-canvas">
-        <img className="figma-static-art" src="/assets/figma/lottery.png" alt="点击抽奖，获取您的美好人居大奖" />
+        <img className="figma-static-art" src="/assets/figma/figma-lottery-page.png" alt="" aria-hidden="true" />
         <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回" />
-        <button className="figma-hit-area figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
+        <div className="figma-lottery-title">
+          <h1>点击抽奖</h1>
+          <strong>获取您的美好人居大奖</strong>
+        </div>
+        <div
+          className={`figma-lottery-wheel is-${spinMode}`}
+          style={{ "--wheel-rotation": `${rotation}deg` } as CSSProperties}
+          aria-hidden="true"
+        >
+          <img src="/assets/figma/figma-lottery-wheel.png" alt="" />
+        </div>
+        <div className="figma-lottery-pointer" aria-hidden="true" />
+        <button className="figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
+          <img src="/assets/figma/figma-lottery-center.png" alt="" aria-hidden="true" />
           <span className="sr-only">{H5_COPY.lottery.button}</span>
         </button>
       </div>
@@ -601,6 +820,7 @@ function LeadScreen({
   isSubmitting,
   onBack,
   onChange,
+  onLegalDocument,
   onSubmit,
 }: {
   hint: string;
@@ -609,6 +829,7 @@ function LeadScreen({
   isSubmitting: boolean;
   onBack: () => void;
   onChange: (lead: LeadFormState) => void;
+  onLegalDocument: (document: LegalDocumentKey) => void;
   onSubmit: () => void;
 }) {
   const provinceCities = ACTIVITY_CONFIG.provinceCities;
@@ -687,11 +908,37 @@ function LeadScreen({
             checked={lead.privacyConsent}
             onChange={(event) => onChange({ ...lead, privacyConsent: event.target.checked })}
           />
-          <span>{H5_COPY.lead.privacy}</span>
+          <span>
+            我已阅读并同意
+            <button
+              className="figma-rules-link"
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onLegalDocument("privacy");
+              }}
+            >
+              《隐私政策》
+            </button>
+            和
+            <button
+              className="figma-rules-link"
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onLegalDocument("authorization");
+              }}
+            >
+              《个人信息处理授权书》
+            </button>
+            ，授权 TATA 木门处理我的个人信息，用于提供定制化服务及后续联系。
+          </span>
         </label>
         {validation && <p className="validation-message">{validation}</p>}
         <button className="figma-submit-button" disabled={!lead.privacyConsent || isSubmitting} type="button" onClick={onSubmit}>
-          {H5_COPY.lead.submit}
+          <span>{H5_COPY.lead.submit}</span>
         </button>
       </div>
     </section>
@@ -699,19 +946,21 @@ function LeadScreen({
 }
 
 function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBackHome: () => void }) {
+  const couponFontSize = prize.couponCode.length > 18 ? "20px" : "34px";
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-result-screen">
       <div className="figma-static-canvas">
-        <img className="figma-static-art" src="/assets/figma/prize.png" alt="" aria-hidden="true" />
-        <button className="figma-hit-area figma-prize-back-hit" type="button" onClick={onBackHome} aria-label="返回首页" />
-        <div className="figma-prize-text-mask" aria-hidden="true" />
+        <img className="figma-static-art" src={`/assets/figma/figma-prize-background.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
+        <button className="figma-back-button figma-prize-visible-back" type="button" onClick={onBackHome} aria-label="返回首页">
+          <img src="/assets/figma/figma-back.png" alt="" />
+        </button>
         <div className="figma-prize-result-title">
           <p>恭喜您获得</p>
           <h1>{prize.prizeName}</h1>
         </div>
-        <div className="figma-coupon-code">
-          <span>奖品兑换码：</span>
-          <strong>{prize.couponCode}</strong>
+        <div className="figma-coupon-card">
+          <span>奖品兑换码</span>
+          <strong style={{ fontSize: couponFontSize }}>{prize.couponCode}</strong>
         </div>
         <p className="figma-coupon-tip">截图保存您的代金券<br />可至全国门店签约后核销兑换<br />礼品以门店设置为准</p>
       </div>

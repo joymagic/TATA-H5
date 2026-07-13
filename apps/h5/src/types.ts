@@ -41,7 +41,7 @@ export interface LeadFormState {
 }
 
 export interface LotteryPrize {
-  prizeLevel: string;
+  prizeLevel: "SPECIAL" | "FIRST" | "SECOND" | "THIRD";
   prizeName: string;
   couponCode: string;
   resultStatus: "WIN";

@@ -25,6 +25,21 @@ test("H5 records a real lead and Admin reads the same database", async () => {
   const token = session.data.sessionToken;
   const result = await request(`/api/v1/h5/sessions/${token}/quiz`, { answers: ["A", "A", "A", "A", "A"] });
   assert.equal(result.data.title, "悦己淡人");
+  assert.equal(result.data.levelName, "柔静级");
+  assert.equal(result.data.description, "家就是我的充电站，日常喜欢客厅闲坐、茶室品茗，我需要柔静级 I级静音，满足我的基础隔音需求。");
+
+  const remainingResults = [
+    ["B", "沉浸领主", "沉静级", "我是独处至上星人，在家喜欢看书、娱乐、学习，我需要沉静级 II级静音，让我独享沉浸小世界。"],
+    ["C", "安睡主宰", "宁静级", "我是睡眠刚需人，一点噪音直接失眠，我需要宁静级 III级静音，给我整夜深睡守护。"],
+    ["D", "头号玩家", "臻静级", "宅家也能当头号玩家，热衷激情上分和观影，我需要臻静级 IV级静音，尽情释放自己的热爱。"],
+  ];
+  for (const [answer, title, levelName, description] of remainingResults) {
+    const extraSession = await request("/api/v1/h5/sessions", { deviceId: `fat-test-${answer}`, channel: "automated-fat" });
+    const extraResult = await request(`/api/v1/h5/sessions/${extraSession.data.sessionToken}/quiz`, { answers: Array(5).fill(answer) });
+    assert.equal(extraResult.data.title, title);
+    assert.equal(extraResult.data.levelName, levelName);
+    assert.equal(extraResult.data.description, description);
+  }
   await request(`/api/v1/h5/sessions/${token}/lead`, { name: "FAT联调", phone: "13800138000", city: "成都", privacyConsent: true });
   const prize = await request(`/api/v1/h5/sessions/${token}/lottery`, { idempotencyKey: "fat-e2e-1" });
   assert.match(prize.data.couponCode, /^TATA/);
@@ -37,6 +52,7 @@ test("H5 records a real lead and Admin reads the same database", async () => {
   assert.equal(snapshot.data.leads.length, 1);
   assert.equal(snapshot.data.leads[0].name, "FAT联调");
   assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "提交客资人数").value, 1);
+  assert.deepEqual(snapshot.data.dashboard.city, [{ label: "成都", value: 1 }]);
 });
 
 async function request(path, body) {

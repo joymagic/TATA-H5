@@ -21,7 +21,7 @@ export const QUESTIONS = [
   },
   {
     no: 2,
-    title: "哪种噪音会直接炸掉你的情绪？",
+    title: "哪种噪音，会直接炸掉你的情绪？",
     weight: 2,
     options: [
       { key: "A", text: "家里电视声、闲聊声" },
@@ -32,7 +32,7 @@ export const QUESTIONS = [
   },
   {
     no: 3,
-    title: "你心中理想居家安静氛围？",
+    title: "你心中理想的居家氛围是？",
     weight: 2,
     options: [
       { key: "A", text: "有点人声也没关系，松弛自在" },
@@ -54,7 +54,7 @@ export const QUESTIONS = [
   },
   {
     no: 5,
-    title: "空闲时间最喜欢干嘛？",
+    title: "空闲时间，你最喜欢干嘛？",
     weight: 1,
     options: [
       { key: "A", text: "约朋友在家小聚下午茶" },

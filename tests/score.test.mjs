@@ -16,8 +16,8 @@ const boundaryCases = [
   { score: 13, title: "悦己淡人" },
   { score: 14, title: "沉浸领主" },
   { score: 19, title: "沉浸领主" },
-  { score: 20, title: "觉主殿下" },
-  { score: 25, title: "觉主殿下" },
+  { score: 20, title: "安睡主宰" },
+  { score: 25, title: "安睡主宰" },
   { score: 26, title: "头号玩家" },
   { score: 32, title: "头号玩家" },
 ];
@@ -30,6 +30,6 @@ for (const testCase of boundaryCases) {
 }
 
 assert.equal(calculateScore(["A", "B", "C", "D", "A"]), 20);
-assert.equal(resultFor(calculateScore(["A", "B", "C", "D", "A"]))?.title, "觉主殿下");
+assert.equal(resultFor(calculateScore(["A", "B", "C", "D", "A"]))?.title, "安睡主宰");
 
 console.log("Score boundary tests passed.");

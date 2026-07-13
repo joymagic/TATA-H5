@@ -1,4 +1,5 @@
 import { ACTIVITY_CONFIG } from "@tata/shared-config";
+import { COUPONS, type CouponRecord } from "@tata/shared-config/coupons";
 import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, SessionState } from "../types";
 import { calculateResult } from "../lib/scoring";
 
@@ -78,15 +79,8 @@ function normalizePhone(phone: string) {
 }
 
 function createCouponCode(phone: string, prizeCode: string) {
-  const prizePrefix: Record<string, string> = {
-    SPECIAL: "TD",
-    FIRST: "YD",
-    SECOND: "ED",
-    THIRD: "SD",
-  };
-  const seed = `${phone}${Date.now()}${Math.floor(Math.random() * 1000000)}`.replace(/\D/g, "");
-  const suffix = (seed + "862609158713").slice(0, 12).padEnd(12, "0");
-  return `TATA-${prizePrefix[prizeCode] ?? "JP"}-${suffix.slice(0, 4)}-${suffix.slice(4, 8)}-${suffix.slice(8, 12)}`;
+  const seed = `${phone}:${prizeCode}`;
+  return selectCoupon(seed, prizeCode)?.code ?? `TATA-${prizeCode}-${phone.slice(-4)}`;
 }
 
 function isActivityActive() {
@@ -120,6 +114,26 @@ function selectPrizeLevel(seed: string) {
     if (roll <= cursor) return prize;
   }
   return fallback;
+}
+
+function couponAmountForPrizeCode(prizeCode: string) {
+  const amountByPrizeCode: Record<string, number> = {
+    SPECIAL: 100,
+    FIRST: 50,
+    SECOND: 20,
+    THIRD: 10,
+  };
+  return amountByPrizeCode[prizeCode] ?? 10;
+}
+
+function selectCoupon(seed: string, prizeCode: string): CouponRecord | undefined {
+  const claimedCodes = new Set(readClaims().map((claim) => claim.prize.couponCode));
+  const amount = couponAmountForPrizeCode(prizeCode);
+  const availableCoupons = COUPONS.filter((coupon) => coupon.amount === amount && !claimedCodes.has(coupon.code));
+  const fallbackCoupons = COUPONS.filter((coupon) => !claimedCodes.has(coupon.code));
+  const pool = availableCoupons.length ? availableCoupons : fallbackCoupons;
+  if (!pool.length) return undefined;
+  return pool[Math.floor(hashToUnit(seed) * pool.length) % pool.length];
 }
 
 function findExistingClaim(phone: string, deviceId: string) {
@@ -178,10 +192,11 @@ export const mockApi = {
 
     const issuedAt = new Date().toISOString();
     const prizeLevel = selectPrizeLevel(`${ACTIVITY_CONFIG.activityId}:${phone}:${deviceId}:${idempotencyKey}`);
+    const prizeCode = prizeLevel.code as LotteryPrize["prizeLevel"];
     const prize: LotteryPrize = {
-      prizeLevel: prizeLevel.code,
+      prizeLevel: prizeCode,
       prizeName: prizeLevel.name,
-      couponCode: createCouponCode(phone, prizeLevel.code),
+      couponCode: createCouponCode(phone, prizeCode),
       resultStatus: "WIN",
       issuedAt,
       expiresAt: ACTIVITY_CONFIG.activityPeriod.endAt,

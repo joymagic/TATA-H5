@@ -25,7 +25,6 @@ import {
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
   CHANNELS,
-  CITIES,
   COUPON_BATCH,
   COUPON_EXPORT_PATH,
   DEMO_ACCOUNTS,
@@ -51,6 +50,7 @@ import {
   downloadCsv,
   formatNumber,
   formatPrizeProbability,
+  getAvailableCities,
   getCouponInventoryRows,
   getDashboardData,
   getIssuedCoupons,
@@ -80,7 +80,7 @@ const EMPTY_DASHBOARD: DashboardData = {
   personality: PERSONALITIES.map((label) => ({ label, value: 0 })),
   funnel: [],
   channel: [...CHANNELS].map((label) => ({ label, value: 0 })),
-  city: [...CITIES].map((label) => ({ label, value: 0 })),
+  city: [],
 };
 
 function readStoredPrizeConfigs(): PrizeLevelConfig[] {
@@ -187,6 +187,7 @@ export function App() {
   const issuedCoupons = getIssuedCoupons(activeSession, scopedUserFilters, RUNTIME.useMockData ? undefined : apiLeads);
   const pageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const visibleUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const availableCities = getAvailableCities(RUNTIME.useMockData ? undefined : apiLeads);
 
   function resetDashboardFilters() {
     setDashboardFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_DASHBOARD_FILTERS, city: activeSession.city } : INITIAL_DASHBOARD_FILTERS);
@@ -309,6 +310,7 @@ export function App() {
 
         {view === "dashboard" ? (
           <DashboardPanel
+            cities={availableCities}
             data={dashboardData}
             filters={scopedDashboardFilters}
             role={activeSession.role}
@@ -322,6 +324,7 @@ export function App() {
           />
         ) : (
           <UsersPanel
+            cities={availableCities}
             disabledCodes={disabledCodes}
             couponInventory={apiCouponInventory}
             filters={scopedUserFilters}
@@ -491,6 +494,7 @@ function ApiNotice({ runtime, status }: { runtime: RuntimeConfig; status: "idle"
 }
 
 function DashboardPanel({
+  cities,
   data,
   filters,
   role,
@@ -499,6 +503,7 @@ function DashboardPanel({
   onQuery,
   onReset,
 }: {
+  cities: string[];
   data: DashboardData;
   filters: DashboardFilters;
   role: AdminRole;
@@ -518,7 +523,7 @@ function DashboardPanel({
         </FilterSelect>
         <FilterSelect label="城市" value={filters.city} disabled={role === "CITY_ADMIN"} onChange={(city) => onFiltersChange({ ...filters, city })}>
           <option value="all">全部城市</option>
-          {CITIES.map((city) => (
+          {cities.map((city) => (
             <option value={city} key={city}>{city}</option>
           ))}
         </FilterSelect>
@@ -575,6 +580,7 @@ function DashboardPanel({
 }
 
 function UsersPanel({
+  cities,
   couponInventory,
   disabledCodes,
   filters,
@@ -600,6 +606,7 @@ function UsersPanel({
   onSimulateCouponAction,
   onUpdatePrizeTotal,
 }: {
+  cities: string[];
   couponInventory: ReturnType<typeof getCouponInventoryRows>;
   disabledCodes: Set<string>;
   filters: UserFilters;
@@ -717,7 +724,7 @@ function UsersPanel({
         </label>
         <FilterSelect label="城市" value={filters.city} disabled={role === "CITY_ADMIN"} onChange={(city) => onFiltersChange({ ...filters, city })}>
           <option value="all">全部城市</option>
-          {CITIES.map((city) => (
+          {cities.map((city) => (
             <option value={city} key={city}>{city}</option>
           ))}
         </FilterSelect>
@@ -838,13 +845,13 @@ function UsersPanel({
               </thead>
               <tbody>
                 {inventoryRows.map((coupon) => {
-                  const disabled = disabledCodes.has(coupon.code);
+                  const disabled = disabledCodes.has(coupon.code) || coupon.status === "redeemed";
                   return (
                     <tr key={coupon.code}>
                       <td>{coupon.id}</td>
                       <td className="code-cell">{coupon.code}</td>
                       <td>{prizeNameForCouponAmount(coupon.amount)}</td>
-                      <td><span className={disabled ? "status-pill status-disabled" : "status-pill status-available"}>{disabled ? "已停用" : "可用"}</span></td>
+                      <td><span className={disabled ? "status-pill status-disabled" : "status-pill status-available"}>{coupon.status === "redeemed" ? "已发放" : disabled ? "已停用" : "可用"}</span></td>
                       <td>{coupon.batchId}</td>
                       <td>
                         <div className="row-actions">
