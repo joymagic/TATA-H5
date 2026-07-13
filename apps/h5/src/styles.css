@@ -1264,49 +1264,6 @@ button:disabled {
   -webkit-overflow-scrolling: touch;
 }
 
-.rules-list {
-  display: grid;
-  gap: 12px;
-}
-
-.rules-item {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  gap: 12px;
-  padding: 14px 0;
-  border-top: 1px solid rgba(45, 87, 105, 0.11);
-}
-
-.rules-item:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.rules-index {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.rules-item strong {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--ink-strong);
-  font-size: 15px;
-}
-
-.rules-item p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.65;
-}
-
-.rules-item p + p {
-  margin-top: 8px;
-}
-
 .legal-backdrop {
   align-items: stretch;
   padding: max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
@@ -1645,36 +1602,26 @@ button:disabled {
   justify-content: center;
   gap: 3px;
   background: transparent;
+  contain: layout paint;
+  isolation: isolate;
   transform: translateX(-50%);
 }
 
-.figma-waveform::before {
-  position: absolute;
-  z-index: 0;
-  left: 0;
-  right: 0;
-  top: -24px;
-  bottom: -24px;
-  content: "";
-  background: #eddfd6;
-}
-
 .figma-waveform i {
-  position: relative;
-  z-index: 1;
   display: block;
   width: 3px;
   height: var(--wave-height);
   max-height: 39px;
   flex: 0 0 3px;
   background: #c80028;
-  animation: figma-wave-pulse 1.15s ease-in-out infinite alternate;
+  animation: figma-wave-pulse 1.15s steps(5, end) infinite alternate;
   animation-delay: var(--wave-delay);
+  will-change: height;
 }
 
 @keyframes figma-wave-pulse {
   from {
-    height: calc(var(--wave-height) * 0.58);
+    height: var(--wave-min-height);
   }
   to {
     height: var(--wave-height);

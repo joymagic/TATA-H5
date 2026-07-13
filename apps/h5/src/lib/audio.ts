@@ -15,6 +15,10 @@ class AudioEngine {
     return this.enabled;
   }
 
+  preload() {
+    this.ensureMusic().load();
+  }
+
   async toggle() {
     if (this.enabled) {
       this.music?.pause();
@@ -22,7 +26,7 @@ class AudioEngine {
       this.enabled = false;
       return false;
     }
-    await this.ensureContext();
+    this.ensureContext();
     const music = this.ensureMusic();
     try {
       await music.play();
@@ -35,12 +39,9 @@ class AudioEngine {
 
   async resumeFromGesture() {
     if (!this.enabled) return;
-    await this.ensureContext();
+    this.ensureContext();
     if (this.music?.paused) {
-      void this.music.play().catch(() => undefined);
-    }
-    if (this.context?.state === "suspended") {
-      void this.context.resume().catch(() => undefined);
+      await this.music.play().catch(() => undefined);
     }
   }
 
@@ -67,10 +68,14 @@ class AudioEngine {
     oscillator.stop(now + this.duration(name));
   }
 
-  private async ensureContext() {
-    if (this.context) return;
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    this.context = new AudioContextClass();
+  private ensureContext() {
+    if (!this.context) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      this.context = new AudioContextClass();
+    }
+    if (this.context.state === "suspended") {
+      void this.context.resume().catch(() => undefined);
+    }
   }
 
   private ensureMusic() {

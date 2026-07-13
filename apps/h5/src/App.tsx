@@ -5,6 +5,7 @@ import {
   Music2,
   RotateCcw,
   ScrollText,
+  VolumeX,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -48,7 +49,7 @@ const LOTTERY_PRIZE_TARGET_ROTATION: Record<LotteryPrize["prizeLevel"], number> 
 const LOTTERY_FAST_SPIN_MS = 2000;
 const LOTTERY_FAST_SPIN_ROUNDS = 6;
 const LOTTERY_SETTLE_MS = 650;
-const UPDATED_ASSET_VERSION = "20260713-4";
+const UPDATED_ASSET_VERSION = "20260714-1";
 const QUIZ_VISUAL_PATHS = [
   "/assets/figma/quiz-web/quiz-question-01.webp",
   "/assets/figma/quiz-web/quiz-question-02.webp",
@@ -96,6 +97,10 @@ function App() {
   const activeResult = result;
   const weChatBrowser = isWeChatBrowser(window.navigator.userAgent);
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
+
+  useEffect(() => {
+    audioEngine.preload();
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -406,7 +411,7 @@ function App() {
 function LoadingScreen({ progress }: { progress: number }) {
   return (
     <section className="screen figma-screen figma-loading-screen">
-      <img className="figma-bg" src="/assets/figma/figma-loading-bg.png" alt="" aria-hidden="true" />
+      <img className="figma-bg" src={`/assets/figma/figma-loading-bg.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
       <img className="figma-loading-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
       <Waveform />
       <div className="figma-progress-track">
@@ -423,7 +428,11 @@ function Waveform({ className = "" }: { className?: string }) {
       {WAVEFORM_HEIGHTS.map((height, index) => (
         <i
           key={`${height}-${index}`}
-          style={{ "--wave-height": `${height}px`, "--wave-delay": `${index * -43}ms` } as CSSProperties}
+          style={{
+            "--wave-height": `${height}px`,
+            "--wave-min-height": `${Math.max(4, Math.round(height * 0.58))}px`,
+            "--wave-delay": `${index * -43}ms`,
+          } as CSSProperties}
         />
       ))}
     </div>
@@ -446,8 +455,13 @@ function HomeScreen({
       <img className="figma-bg" src="/assets/figma/figma-home-bg.png" alt="" aria-hidden="true" />
       <img className="figma-home-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
       <div className="figma-home-actions">
-        <button type="button" onClick={onAudioToggle} aria-label="背景音乐开关" aria-pressed={audioEnabled}>
-          <Music2 size={13} />
+        <button
+          type="button"
+          onClick={onAudioToggle}
+          aria-label={audioEnabled ? "关闭背景音乐" : "开启背景音乐"}
+          aria-pressed={audioEnabled}
+        >
+          {audioEnabled ? <Music2 size={13} /> : <VolumeX size={13} />}
           <span>背景音乐</span>
         </button>
         <button type="button" onClick={onRules}>
@@ -471,35 +485,30 @@ function HomeScreen({
 
 function ActivityRulesModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="rules-backdrop" role="presentation" onClick={onClose}>
+    <div className="rules-backdrop legal-backdrop" role="presentation" onClick={onClose}>
       <button className="rules-close" type="button" onClick={onClose} aria-label="关闭活动规则">
         <X size={20} />
       </button>
       <section
-        className="rules-modal"
+        className="rules-modal legal-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="activity-rules-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="rules-modal-header">
+        <header className="rules-modal-header legal-modal-header">
           <div>
             <span className="rules-eyebrow">{H5_COPY.rules.brand}</span>
             <h2 id="activity-rules-title">{H5_COPY.rules.title}</h2>
           </div>
         </header>
-        <div className="rules-scroll-body">
-          <div className="rules-list">
-            {H5_COPY.rules.sections.map((section, index) => (
-              <article className="rules-item" key={section.title}>
-                <span className="rules-index">{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <strong>{section.title}</strong>
-                  {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                </div>
-              </article>
-            ))}
-          </div>
+        <div className="rules-scroll-body legal-scroll-body">
+          {H5_COPY.rules.sections.map((section) => (
+            <article className="legal-section" key={section.title}>
+              <h3>{section.title}</h3>
+              {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            </article>
+          ))}
         </div>
       </section>
     </div>
@@ -578,7 +587,7 @@ function QuizScreen({
     <section className="screen figma-screen figma-quiz-screen">
       <img className="figma-bg" src="/assets/figma/figma-quiz-bg.png" alt="" aria-hidden="true" />
       <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
-        <img src="/assets/figma/figma-back.png" alt="" />
+        <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
       </button>
       <div className="figma-quiz-count">
         <strong>{String(questionIndex + 1).padStart(2, "0")}</strong>
@@ -628,9 +637,9 @@ function QuizScreen({
 function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean; onBack: () => void; onRetry: () => void }) {
   return (
     <section className="screen figma-screen figma-result-loading-screen">
-      <img className="figma-bg" src="/assets/figma/figma-result-loading-bg.png" alt="" aria-hidden="true" />
+      <img className="figma-bg" src={`/assets/figma/figma-result-loading-bg.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
       <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
-        <img src="/assets/figma/figma-back.png" alt="" />
+        <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
       </button>
       <div className="figma-result-loading-copy">
         <small>ANALYZING</small>
@@ -724,7 +733,7 @@ function FigmaResultScreen({
       >
         <img className="figma-result-scene" src={background || getResultBackgroundUrl(result.productKey, 1)} alt="" aria-hidden="true" />
         <button className="figma-back-button figma-result-visible-back" type="button" onClick={onBack} aria-label="返回">
-          <img src="/assets/figma/figma-back.png" alt="" />
+          <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </button>
         <img
           className="figma-result-title-art"
@@ -790,7 +799,7 @@ function LotteryScreen({
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-screen">
       <div className="figma-static-canvas">
-        <img className="figma-static-art" src="/assets/figma/figma-lottery-page.png" alt="" aria-hidden="true" />
+        <img className="figma-static-art" src={`/assets/figma/figma-lottery-page.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
         <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回" />
         <div className="figma-lottery-title">
           <h1>点击抽奖</h1>
@@ -801,11 +810,11 @@ function LotteryScreen({
           style={{ "--wheel-rotation": `${rotation}deg` } as CSSProperties}
           aria-hidden="true"
         >
-          <img src="/assets/figma/figma-lottery-wheel.png" alt="" />
+          <img src={`/assets/figma/figma-lottery-wheel.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </div>
         <div className="figma-lottery-pointer" aria-hidden="true" />
         <button className="figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
-          <img src="/assets/figma/figma-lottery-center.png" alt="" aria-hidden="true" />
+          <img src={`/assets/figma/figma-lottery-center.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
           <span className="sr-only">{H5_COPY.lottery.button}</span>
         </button>
       </div>
@@ -840,7 +849,7 @@ function LeadScreen({
     <section className="screen figma-screen figma-lead-screen" data-result-hint={hint}>
       <img className="figma-bg" src="/assets/figma/figma-lead-bg.png" alt="" aria-hidden="true" />
       <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
-        <img src="/assets/figma/figma-back.png" alt="" />
+        <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
       </button>
       <div className="figma-lead-card">
         <div className="figma-lead-intro">
@@ -952,7 +961,7 @@ function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBac
       <div className="figma-static-canvas">
         <img className="figma-static-art" src={`/assets/figma/figma-prize-background.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
         <button className="figma-back-button figma-prize-visible-back" type="button" onClick={onBackHome} aria-label="返回首页">
-          <img src="/assets/figma/figma-back.png" alt="" />
+          <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </button>
         <div className="figma-prize-result-title">
           <p>恭喜您获得</p>
