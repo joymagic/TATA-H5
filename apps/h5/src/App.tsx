@@ -810,7 +810,7 @@ function LotteryScreen({
           style={{ "--wheel-rotation": `${rotation}deg` } as CSSProperties}
           aria-hidden="true"
         >
-          <img src={`/assets/figma/figma-lottery-wheel.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
+          <img src={`/assets/figma/figma-lottery-wheel.png?v=${UPDATED_ASSET_VERSION}-centerfix1`} alt="" />
         </div>
         <div className="figma-lottery-pointer" aria-hidden="true" />
         <button className="figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
