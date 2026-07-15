@@ -27,7 +27,8 @@ const initialLead: LeadFormState = {
 
 const ANALYSIS_STEPS = ["分析答题数据", "识别宅家人格", "匹配静音等级", "生成专属报告"];
 const INITIAL_LOADING_MIN_MS = 3000;
-const RESULT_LOADING_MIN_MS = 3000;
+const RESULT_LOADING_STEP_GAP_MS = 420;
+const RESULT_LOADING_REVEAL_MS = 300;
 const RESULT_IMAGE_COUNT = 4;
 const RESULT_LEVEL_VALUES = {
   level1: "隔声量20(dB)≤Rw+C<25(dB)",
@@ -100,6 +101,7 @@ function App() {
   const [posterPreviewOpen, setPosterPreviewOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [resultError, setResultError] = useState(false);
+  const [resultLoadingStep, setResultLoadingStep] = useState(0);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
@@ -213,6 +215,26 @@ function App() {
     setQuestionIndex((index) => index - 1);
   }
 
+  async function resolveQuizResult(answerSet: OptionKey[], playRevealSound: boolean) {
+    const nextResult = await activityApi.submitQuiz(answerSet);
+    const nextBackground = pickResultBackground(nextResult.productKey);
+    const backgroundReady = preloadImage(nextBackground);
+    const titleReady = preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`);
+
+    setResultLoadingStep(1);
+    await wait(RESULT_LOADING_STEP_GAP_MS);
+    setResultLoadingStep(2);
+    await Promise.all([titleReady, wait(RESULT_LOADING_STEP_GAP_MS)]);
+    setResultLoadingStep(3);
+    await Promise.all([backgroundReady, wait(RESULT_LOADING_STEP_GAP_MS)]);
+    setResultLoadingStep(4);
+    setResult(nextResult);
+    setResultBackground(nextBackground);
+    await wait(RESULT_LOADING_REVEAL_MS);
+    if (playRevealSound) audioEngine.play("reveal");
+    setScreen("result");
+  }
+
   function selectAnswer(answer: OptionKey) {
     audioEngine.play("select");
     const nextAnswers = [...answers];
@@ -225,23 +247,12 @@ function App() {
         return;
       }
       setScreen("resultLoading");
+      setResultLoadingStep(0);
       setResultError(false);
       audioEngine.play("scan");
-      const loadingStartedAt = Date.now();
       try {
-        const nextResult = await activityApi.submitQuiz(nextAnswers);
-        const nextBackground = pickResultBackground(nextResult.productKey);
-        await Promise.all([
-          wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
-          preloadImage(nextBackground),
-          preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
-        ]);
-        setResult(nextResult);
-        setResultBackground(nextBackground);
-        audioEngine.play("reveal");
-        setScreen("result");
+        await resolveQuizResult(nextAnswers, true);
       } catch {
-        await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
         setResultError(true);
         setToast(H5_COPY.resultLoading.error);
       }
@@ -250,21 +261,11 @@ function App() {
 
   async function retryResult() {
     setScreen("resultLoading");
+    setResultLoadingStep(0);
     setResultError(false);
-    const loadingStartedAt = Date.now();
     try {
-      const nextResult = await activityApi.submitQuiz(answers);
-      const nextBackground = pickResultBackground(nextResult.productKey);
-      await Promise.all([
-        wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
-        preloadImage(nextBackground),
-        preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
-      ]);
-      setResult(nextResult);
-      setResultBackground(nextBackground);
-      setScreen("result");
+      await resolveQuizResult(answers, false);
     } catch {
-      await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
       setResultError(true);
       setToast(H5_COPY.resultLoading.error);
     }
@@ -332,7 +333,7 @@ function App() {
         setToast(H5_COPY.system.drawLeadRequired);
       } else if (error instanceof LotteryRuleError && error.code === "ACTIVITY_INACTIVE") {
         setToast(H5_COPY.system.drawInactive);
-      } else if (error instanceof LotteryRuleError && ["PHONE_ALREADY_DRAWN", "DEVICE_ALREADY_DRAWN"].includes(error.code)) {
+      } else if (error instanceof LotteryRuleError && error.code === "PHONE_ALREADY_DRAWN") {
         setDrawReminderOpen(true);
       } else {
         setToast(H5_COPY.system.drawFailed);
@@ -392,7 +393,7 @@ function App() {
           />
         )}
         {screen === "resultLoading" && (
-          <ResultLoadingScreen hasError={resultError} onBack={() => setScreen("quiz")} onRetry={retryResult} />
+          <ResultLoadingScreen completedSteps={resultLoadingStep} hasError={resultError} onBack={() => setScreen("quiz")} onRetry={retryResult} />
         )}
         {screen === "result" && activeResult && (
           <FigmaResultScreen
@@ -746,7 +747,7 @@ function QuizScreen({
   );
 }
 
-function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean; onBack: () => void; onRetry: () => void }) {
+function ResultLoadingScreen({ completedSteps, hasError, onBack, onRetry }: { completedSteps: number; hasError: boolean; onBack: () => void; onRetry: () => void }) {
   return (
     <section className="screen figma-screen figma-result-loading-screen">
       <img className="figma-bg" src={`/assets/figma/figma-result-loading-bg.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
@@ -762,7 +763,7 @@ function ResultLoadingScreen({ hasError, onBack, onRetry }: { hasError: boolean;
         <i className="figma-analysis-dots" aria-hidden="true" />
         <ul>
           {ANALYSIS_STEPS.map((step, index) => (
-            <li key={step} style={{ "--step-delay": `${160 + index * 300}ms` } as CSSProperties}>
+            <li className={index < completedSteps ? "is-complete" : ""} key={step}>
               <span className="figma-analysis-check" aria-hidden="true" />
               <strong>{step}</strong>
             </li>

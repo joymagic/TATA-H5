@@ -3,10 +3,15 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 
 const temp = mkdtempSync(join(tmpdir(), "tata-fat-api-"));
+const dbPath = join(temp, "fat.sqlite");
+const legacyDb = new DatabaseSync(dbPath);
+legacyDb.exec("CREATE TABLE lottery_draws (id TEXT PRIMARY KEY, session_id TEXT UNIQUE NOT NULL, lead_id TEXT NOT NULL, phone TEXT UNIQUE NOT NULL, device_id TEXT UNIQUE NOT NULL, coupon_id TEXT UNIQUE NOT NULL, prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL)");
+legacyDb.close();
 process.env.NODE_ENV = "test";
-process.env.FAT_DB_PATH = join(temp, "fat.sqlite");
+process.env.FAT_DB_PATH = dbPath;
 process.env.FAT_ADMIN_PASSWORD = "TATA2026";
 const { server } = await import(`../src/server.mjs?test=${Date.now()}`);
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -59,16 +64,25 @@ test("H5 records a real lead and Admin reads the same database", async () => {
   assert.equal(duplicateResponse.status, 409);
   assert.equal(duplicatePayload.error.code, "PHONE_ALREADY_DRAWN");
 
+  const newPhoneSession = await request("/api/v1/h5/sessions", { deviceId: "fat-test-device", channel: "automated-fat" });
+  const newPhoneToken = newPhoneSession.data.sessionToken;
+  await request(`/api/v1/h5/sessions/${newPhoneToken}/quiz`, { answers: ["A", "A", "A", "A", "A"] });
+  await request(`/api/v1/h5/sessions/${newPhoneToken}/lead`, { name: "同设备新手机号", phone: "13900139000", city: "成都", privacyConsent: true });
+  const newPhonePrize = await request(`/api/v1/h5/sessions/${newPhoneToken}/lottery`, { idempotencyKey: "fat-same-device-new-phone" });
+  assert.match(newPhonePrize.data.couponCode, /^TATA/);
+
   const loginResponse = await fetch(`${base}/api/v1/admin/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: "hq_admin", password: "TATA2026" }) });
   assert.equal(loginResponse.status, 200);
   const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
   const snapshotResponse = await fetch(`${base}/api/v1/admin/snapshot`, { headers: { Cookie: cookie } });
   const snapshot = await snapshotResponse.json();
-  assert.equal(snapshot.data.leads.length, 2);
+  assert.equal(snapshot.data.leads.length, 3);
   assert.equal(snapshot.data.leads.find((item) => item.name === "FAT联调").couponCode, prize.data.couponCode);
   assert.equal(snapshot.data.leads.find((item) => item.name === "重复手机号").couponCode, "—");
-  assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "提交客资人数").value, 2);
-  assert.deepEqual(snapshot.data.dashboard.city, [{ label: "成都", value: 2 }]);
+  assert.notEqual(snapshot.data.leads.find((item) => item.name === "同设备新手机号").couponCode, "—");
+  assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "提交客资人数").value, 3);
+  assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "抽奖人数").value, 2);
+  assert.deepEqual(snapshot.data.dashboard.city, [{ label: "成都", value: 3 }]);
 });
 
 async function request(path, body) {

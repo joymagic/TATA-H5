@@ -2152,10 +2152,6 @@ button:disabled {
   grid-template-columns: 42px 1fr;
   align-items: center;
   min-height: 42px;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: analysis-row-in 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: var(--step-delay);
 }
 
 .figma-analysis-panel li:not(:last-child)::after {
@@ -2181,8 +2177,10 @@ button:disabled {
   height: 20px;
   opacity: 0;
   transform: scale(0.7);
+}
+
+.figma-analysis-panel li.is-complete .figma-analysis-check {
   animation: analysis-check-in 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: var(--step-delay);
 }
 
 .figma-analysis-check::before {
@@ -2227,23 +2225,11 @@ button:disabled {
   }
 }
 
-@keyframes analysis-row-in {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .figma-analysis-panel li,
-  .figma-analysis-check {
+  .figma-analysis-panel li.is-complete .figma-analysis-check {
     opacity: 1;
     transform: scale(1);
     animation: none;
-  }
-
-  .figma-analysis-panel li {
-    transform: translateY(0);
   }
 }
 
@@ -2360,12 +2346,17 @@ button:disabled {
 }
 
 .figma-dynamic-card::before {
-  background: var(--result-card-text);
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .figma-dynamic-card::after {
-  inset: 1px;
-  background: rgba(0, 0, 0, 0.6);
+  padding: 1px;
+  background: var(--result-card-text);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 .figma-dynamic-card span {

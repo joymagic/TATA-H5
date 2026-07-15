@@ -24,7 +24,6 @@ interface LotteryClaim {
 export type LotteryRuleErrorCode =
   | "ACTIVITY_INACTIVE"
   | "CONFIG_MISSING"
-  | "DEVICE_ALREADY_DRAWN"
   | "LEAD_REQUIRED"
   | "PHONE_ALREADY_DRAWN";
 
@@ -141,8 +140,8 @@ function selectCoupon(seed: string, prizeCode: string): CouponRecord | undefined
   return pool[Math.floor(hashToUnit(seed) * pool.length) % pool.length];
 }
 
-function findExistingClaim(phone: string, deviceId: string) {
-  return readClaims().find((claim) => claim.phone === phone || claim.deviceId === deviceId);
+function findExistingClaim(phone: string) {
+  return readClaims().find((claim) => claim.phone === phone);
 }
 
 export const mockApi = {
@@ -189,10 +188,9 @@ export const mockApi = {
 
     const phone = normalizePhone(state.lead.phone);
     const deviceId = state.session?.deviceId ?? getDeviceId();
-    const existingClaim = findExistingClaim(phone, deviceId);
+    const existingClaim = findExistingClaim(phone);
     if (existingClaim) {
-      const code = existingClaim.phone === phone ? "PHONE_ALREADY_DRAWN" : "DEVICE_ALREADY_DRAWN";
-      throw new LotteryRuleError(code);
+      throw new LotteryRuleError("PHONE_ALREADY_DRAWN");
     }
 
     const issuedAt = new Date().toISOString();

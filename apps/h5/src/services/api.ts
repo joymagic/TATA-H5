@@ -32,7 +32,6 @@ const remoteApi = {
       if (code === "LEAD_REQUIRED") throw new LotteryRuleError("LEAD_REQUIRED");
       if (code === "ACTIVITY_INACTIVE") throw new LotteryRuleError("ACTIVITY_INACTIVE");
       if (code === "PHONE_ALREADY_DRAWN") throw new LotteryRuleError("PHONE_ALREADY_DRAWN");
-      if (code === "DEVICE_ALREADY_DRAWN") throw new LotteryRuleError("DEVICE_ALREADY_DRAWN");
       throw error;
     }
   },

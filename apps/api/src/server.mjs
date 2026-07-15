@@ -117,17 +117,10 @@ async function route(request, response) {
     if (db.prepare("SELECT 1 FROM lottery_draws WHERE phone = ? LIMIT 1").get(lead.phone)) {
       throw httpError(409, "PHONE_ALREADY_DRAWN", "该手机号已参与过抽奖");
     }
-    if (db.prepare("SELECT 1 FROM lottery_draws WHERE device_id = ? LIMIT 1").get(session.device_id)) {
-      throw httpError(409, "DEVICE_ALREADY_DRAWN", "当前设备已参与过抽奖");
-    }
-
     db.exec("BEGIN IMMEDIATE");
     try {
       if (db.prepare("SELECT 1 FROM lottery_draws WHERE phone = ? LIMIT 1").get(lead.phone)) {
         throw httpError(409, "PHONE_ALREADY_DRAWN", "该手机号已参与过抽奖");
-      }
-      if (db.prepare("SELECT 1 FROM lottery_draws WHERE device_id = ? LIMIT 1").get(session.device_id)) {
-        throw httpError(409, "DEVICE_ALREADY_DRAWN", "当前设备已参与过抽奖");
       }
       const chosen = choosePrize(`${session.id}:${lead.phone}:${session.device_id}:${idempotencyKey}`);
       let coupon = db.prepare("SELECT * FROM coupons WHERE prize_code = ? AND status = 'AVAILABLE' ORDER BY id LIMIT 1").get(chosen.code);
@@ -186,9 +179,10 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone);
     CREATE TABLE IF NOT EXISTS coupons (id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, amount INTEGER NOT NULL, prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, status TEXT NOT NULL, batch_id TEXT NOT NULL, created_at TEXT NOT NULL, issued_at TEXT, session_id TEXT, lead_id TEXT);
     CREATE INDEX IF NOT EXISTS idx_coupons_available ON coupons(status, prize_code);
-    CREATE TABLE IF NOT EXISTS lottery_draws (id TEXT PRIMARY KEY, session_id TEXT UNIQUE NOT NULL REFERENCES sessions(id), lead_id TEXT NOT NULL REFERENCES leads(id), phone TEXT UNIQUE NOT NULL, device_id TEXT UNIQUE NOT NULL, coupon_id TEXT UNIQUE NOT NULL REFERENCES coupons(id), prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS lottery_draws (id TEXT PRIMARY KEY, session_id TEXT UNIQUE NOT NULL REFERENCES sessions(id), lead_id TEXT NOT NULL REFERENCES leads(id), phone TEXT UNIQUE NOT NULL, device_id TEXT NOT NULL, coupon_id TEXT UNIQUE NOT NULL REFERENCES coupons(id), prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_sessions (token TEXT PRIMARY KEY, username TEXT NOT NULL, role TEXT NOT NULL, city TEXT NOT NULL, expires_at TEXT NOT NULL);
   `);
+  migrateLotteryDrawsPhoneOnlyConstraint();
   db.prepare("UPDATE sessions SET result_title = ? WHERE result_title = ?").run("安睡主宰", "觉主殿下");
   const count = Number(db.prepare("SELECT COUNT(*) count FROM coupons").get().count);
   if (count > 0) return;
@@ -204,6 +198,29 @@ function initializeDatabase() {
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
+  }
+}
+
+function migrateLotteryDrawsPhoneOnlyConstraint() {
+  const table = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'lottery_draws'").get();
+  if (!/device_id\s+TEXT\s+UNIQUE/i.test(table?.sql || "")) return;
+
+  db.exec("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;");
+  try {
+    db.exec(`
+      DROP TABLE IF EXISTS lottery_draws_next;
+      CREATE TABLE lottery_draws_next (id TEXT PRIMARY KEY, session_id TEXT UNIQUE NOT NULL REFERENCES sessions(id), lead_id TEXT NOT NULL REFERENCES leads(id), phone TEXT UNIQUE NOT NULL, device_id TEXT NOT NULL, coupon_id TEXT UNIQUE NOT NULL REFERENCES coupons(id), prize_code TEXT NOT NULL, prize_name TEXT NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);
+      INSERT INTO lottery_draws_next (id, session_id, lead_id, phone, device_id, coupon_id, prize_code, prize_name, idempotency_key, created_at)
+        SELECT id, session_id, lead_id, phone, device_id, coupon_id, prize_code, prize_name, idempotency_key, created_at FROM lottery_draws;
+      DROP TABLE lottery_draws;
+      ALTER TABLE lottery_draws_next RENAME TO lottery_draws;
+      COMMIT;
+    `);
+  } catch (error) {
+    db.exec("ROLLBACK;");
+    throw error;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
   }
 }
 

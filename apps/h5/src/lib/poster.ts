@@ -9,15 +9,19 @@ const POSTER_ASSET_VERSION = "20260715-1";
 const POSTER_META = {
   level1: {
     bg: "#d6b36d",
+    qrBorder: "#edd8b2",
   },
   level2: {
     bg: "#c18be4",
+    qrBorder: "#dfb9ff",
   },
   level3: {
     bg: "#bed8c7",
+    qrBorder: "#c9edd2",
   },
   level4: {
     bg: "#b9d8ef",
+    qrBorder: "#c0e3ff",
   },
 } as const;
 
@@ -67,7 +71,7 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
 
   coverImage(context, scene, 42, 68, 292, 553);
   context.drawImage(levelTitle, 84, 101, 207, 134);
-  drawQrArea(context);
+  drawQrArea(context, meta.qrBorder);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, ACTIVITY_CONFIG.shareUrl, {
@@ -95,7 +99,7 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   return canvas.toDataURL("image/png");
 }
 
-function drawQrArea(context: CanvasRenderingContext2D) {
+function drawQrArea(context: CanvasRenderingContext2D, borderColor: string) {
   context.save();
   context.shadowColor = "#2b2424";
   context.shadowBlur = 0;
@@ -105,7 +109,7 @@ function drawQrArea(context: CanvasRenderingContext2D) {
   context.fillRect(231, 589, 90, 90);
   context.restore();
 
-  context.strokeStyle = "rgba(255, 255, 255, 0.92)";
+  context.strokeStyle = borderColor;
   context.lineWidth = 1;
   context.strokeRect(231.5, 589.5, 89, 89);
   context.beginPath();
