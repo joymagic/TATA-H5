@@ -74,24 +74,6 @@ function preloadImage(src: string) {
   });
 }
 
-async function preloadAlibabaFont() {
-  if (!("fonts" in document)) return;
-  await Promise.all([
-    document.fonts.load('500 16px "Alibaba PuHuiTi"'),
-    document.fonts.load('600 16px "Alibaba PuHuiTi"'),
-    document.fonts.load('900 32px "Alibaba PuHuiTi"'),
-  ]);
-}
-
-async function preloadResultFonts() {
-  if (!("fonts" in document)) return;
-  await Promise.all([
-    document.fonts.load('500 14px "Alibaba PuHuiTi"'),
-    document.fonts.load('600 16px "Alibaba PuHuiTi"'),
-    document.fonts.load('700 36px "Alibaba PuHuiTi"'),
-  ]);
-}
-
 function nextWheelRotation(currentRotation: number, prizeLevel: LotteryPrize["prizeLevel"]) {
   const targetRotation = LOTTERY_PRIZE_TARGET_ROTATION[prizeLevel];
   const currentNormalized = ((currentRotation % 360) + 360) % 360;
@@ -169,7 +151,6 @@ function App() {
         preloadImage(`/assets/figma/figma-home-bg.png?v=${UPDATED_ASSET_VERSION}`),
         preloadImage(`/assets/figma/figma-home-title.png?v=${UPDATED_ASSET_VERSION}`),
         preloadImage(`/assets/figma/figma-tata-logo.png?v=${UPDATED_ASSET_VERSION}`),
-        preloadAlibabaFont(),
       ]),
       wait(INITIAL_LOADING_MIN_MS),
     ])
@@ -254,7 +235,6 @@ function App() {
           wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
           preloadImage(nextBackground),
           preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
-          preloadResultFonts(),
         ]);
         setResult(nextResult);
         setResultBackground(nextBackground);
@@ -279,7 +259,6 @@ function App() {
         wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
         preloadImage(nextBackground),
         preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
-        preloadResultFonts(),
       ]);
       setResult(nextResult);
       setResultBackground(nextBackground);
