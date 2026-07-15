@@ -110,13 +110,25 @@ async function route(request, response) {
     if (!idempotencyKey) throw httpError(400, "IDEMPOTENCY_REQUIRED", "缺少幂等标识");
     const lead = db.prepare("SELECT * FROM leads WHERE session_id = ?").get(session.id);
     if (!lead) throw httpError(409, "LEAD_REQUIRED", "请先提交信息");
-    const prior = db.prepare(`SELECT d.*, c.code AS coupon_code FROM lottery_draws d JOIN coupons c ON c.id = d.coupon_id
-      WHERE d.session_id = ? OR d.phone = ? OR d.device_id = ? OR d.idempotency_key = ? LIMIT 1`)
-      .get(session.id, lead.phone, session.device_id, idempotencyKey);
-    if (prior) return json(response, 200, { data: toPrize(prior) });
+    const idempotentPrior = db.prepare(`SELECT d.*, c.code AS coupon_code FROM lottery_draws d JOIN coupons c ON c.id = d.coupon_id
+      WHERE d.session_id = ? OR d.idempotency_key = ? LIMIT 1`)
+      .get(session.id, idempotencyKey);
+    if (idempotentPrior) return json(response, 200, { data: toPrize(idempotentPrior) });
+    if (db.prepare("SELECT 1 FROM lottery_draws WHERE phone = ? LIMIT 1").get(lead.phone)) {
+      throw httpError(409, "PHONE_ALREADY_DRAWN", "该手机号已参与过抽奖");
+    }
+    if (db.prepare("SELECT 1 FROM lottery_draws WHERE device_id = ? LIMIT 1").get(session.device_id)) {
+      throw httpError(409, "DEVICE_ALREADY_DRAWN", "当前设备已参与过抽奖");
+    }
 
     db.exec("BEGIN IMMEDIATE");
     try {
+      if (db.prepare("SELECT 1 FROM lottery_draws WHERE phone = ? LIMIT 1").get(lead.phone)) {
+        throw httpError(409, "PHONE_ALREADY_DRAWN", "该手机号已参与过抽奖");
+      }
+      if (db.prepare("SELECT 1 FROM lottery_draws WHERE device_id = ? LIMIT 1").get(session.device_id)) {
+        throw httpError(409, "DEVICE_ALREADY_DRAWN", "当前设备已参与过抽奖");
+      }
       const chosen = choosePrize(`${session.id}:${lead.phone}:${session.device_id}:${idempotencyKey}`);
       let coupon = db.prepare("SELECT * FROM coupons WHERE prize_code = ? AND status = 'AVAILABLE' ORDER BY id LIMIT 1").get(chosen.code);
       if (!coupon) coupon = db.prepare("SELECT * FROM coupons WHERE status = 'AVAILABLE' ORDER BY amount DESC, id LIMIT 1").get();

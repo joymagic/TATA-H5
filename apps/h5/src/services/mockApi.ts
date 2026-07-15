@@ -21,7 +21,12 @@ interface LotteryClaim {
   prize: LotteryPrize;
 }
 
-export type LotteryRuleErrorCode = "ACTIVITY_INACTIVE" | "CONFIG_MISSING" | "LEAD_REQUIRED";
+export type LotteryRuleErrorCode =
+  | "ACTIVITY_INACTIVE"
+  | "CONFIG_MISSING"
+  | "DEVICE_ALREADY_DRAWN"
+  | "LEAD_REQUIRED"
+  | "PHONE_ALREADY_DRAWN";
 
 export class LotteryRuleError extends Error {
   code: LotteryRuleErrorCode;
@@ -186,8 +191,8 @@ export const mockApi = {
     const deviceId = state.session?.deviceId ?? getDeviceId();
     const existingClaim = findExistingClaim(phone, deviceId);
     if (existingClaim) {
-      writeState({ prize: existingClaim.prize });
-      return delay(existingClaim.prize, 480);
+      const code = existingClaim.phone === phone ? "PHONE_ALREADY_DRAWN" : "DEVICE_ALREADY_DRAWN";
+      throw new LotteryRuleError(code);
     }
 
     const issuedAt = new Date().toISOString();

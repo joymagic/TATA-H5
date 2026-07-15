@@ -43,16 +43,32 @@ test("H5 records a real lead and Admin reads the same database", async () => {
   await request(`/api/v1/h5/sessions/${token}/lead`, { name: "FAT联调", phone: "13800138000", city: "成都", privacyConsent: true });
   const prize = await request(`/api/v1/h5/sessions/${token}/lottery`, { idempotencyKey: "fat-e2e-1" });
   assert.match(prize.data.couponCode, /^TATA/);
+  const idempotentPrize = await request(`/api/v1/h5/sessions/${token}/lottery`, { idempotencyKey: "fat-e2e-retry" });
+  assert.equal(idempotentPrize.data.couponCode, prize.data.couponCode);
+
+  const duplicateSession = await request("/api/v1/h5/sessions", { deviceId: "fat-duplicate-phone-device", channel: "automated-fat" });
+  const duplicateToken = duplicateSession.data.sessionToken;
+  await request(`/api/v1/h5/sessions/${duplicateToken}/quiz`, { answers: ["A", "A", "A", "A", "A"] });
+  await request(`/api/v1/h5/sessions/${duplicateToken}/lead`, { name: "重复手机号", phone: "13800138000", city: "成都", privacyConsent: true });
+  const duplicateResponse = await fetch(`${base}/api/v1/h5/sessions/${duplicateToken}/lottery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idempotencyKey: "fat-duplicate-phone" }),
+  });
+  const duplicatePayload = await duplicateResponse.json();
+  assert.equal(duplicateResponse.status, 409);
+  assert.equal(duplicatePayload.error.code, "PHONE_ALREADY_DRAWN");
 
   const loginResponse = await fetch(`${base}/api/v1/admin/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: "hq_admin", password: "TATA2026" }) });
   assert.equal(loginResponse.status, 200);
   const cookie = loginResponse.headers.get("set-cookie").split(";")[0];
   const snapshotResponse = await fetch(`${base}/api/v1/admin/snapshot`, { headers: { Cookie: cookie } });
   const snapshot = await snapshotResponse.json();
-  assert.equal(snapshot.data.leads.length, 1);
-  assert.equal(snapshot.data.leads[0].name, "FAT联调");
-  assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "提交客资人数").value, 1);
-  assert.deepEqual(snapshot.data.dashboard.city, [{ label: "成都", value: 1 }]);
+  assert.equal(snapshot.data.leads.length, 2);
+  assert.equal(snapshot.data.leads.find((item) => item.name === "FAT联调").couponCode, prize.data.couponCode);
+  assert.equal(snapshot.data.leads.find((item) => item.name === "重复手机号").couponCode, "—");
+  assert.equal(snapshot.data.dashboard.metrics.find((item) => item.label === "提交客资人数").value, 2);
+  assert.deepEqual(snapshot.data.dashboard.city, [{ label: "成都", value: 2 }]);
 });
 
 async function request(path, body) {

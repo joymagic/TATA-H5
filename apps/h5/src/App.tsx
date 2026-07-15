@@ -26,8 +26,9 @@ const initialLead: LeadFormState = {
 };
 
 const ANALYSIS_STEPS = ["分析答题数据", "识别宅家人格", "匹配静音等级", "生成专属报告"];
-const RESULT_LOADING_MIN_MS = 2400;
-const RESULT_IMAGE_COUNT = 3;
+const INITIAL_LOADING_MIN_MS = 3000;
+const RESULT_LOADING_MIN_MS = 3000;
+const RESULT_IMAGE_COUNT = 4;
 const RESULT_LEVEL_VALUES = {
   level1: "隔声量20(dB)≤Rw+C<25(dB)",
   level2: "隔声量25(dB)≤Rw+C<30(dB)",
@@ -35,21 +36,21 @@ const RESULT_LEVEL_VALUES = {
   level4: "隔声量Rw+C≥35(dB)",
 } as const;
 const RESULT_THEMES = {
-  level1: { bg: "#d6b36d", accent: "#956a3f", button: "#f1dbb1", roman: "Ⅰ" },
-  level2: { bg: "#c18be4", accent: "#4b2b7c", button: "#c18be4", roman: "Ⅱ" },
-  level3: { bg: "#bed8c7", accent: "#203c36", button: "#d5efd9", roman: "Ⅲ" },
-  level4: { bg: "#b9d8ef", accent: "#1a75b4", button: "#b9d8ef", roman: "Ⅳ" },
+  level1: { bg: "#d6b36d", accent: "#956a3f", button: "#f1dbb1", cardText: "#edd8b2", roman: "Ⅰ" },
+  level2: { bg: "#c18be4", accent: "#4b2b7c", button: "#c18be4", cardText: "#dfb9ff", roman: "Ⅱ" },
+  level3: { bg: "#bed8c7", accent: "#203c36", button: "#d5efd9", cardText: "#c9edd2", roman: "Ⅲ" },
+  level4: { bg: "#b9d8ef", accent: "#1a75b4", button: "#b9d8ef", cardText: "#c0e3ff", roman: "Ⅳ" },
 } as const;
 const LOTTERY_PRIZE_TARGET_ROTATION: Record<LotteryPrize["prizeLevel"], number> = {
   SPECIAL: 0,
-  FIRST: 270,
-  THIRD: 180,
-  SECOND: 90,
+  FIRST: 295,
+  SECOND: 205,
+  THIRD: 90,
 };
 const LOTTERY_FAST_SPIN_MS = 2000;
 const LOTTERY_FAST_SPIN_ROUNDS = 6;
 const LOTTERY_SETTLE_MS = 650;
-const UPDATED_ASSET_VERSION = "20260714-1";
+const UPDATED_ASSET_VERSION = "20260715-1";
 const QUIZ_VISUAL_PATHS = [
   "/assets/figma/quiz-web/quiz-question-01.webp",
   "/assets/figma/quiz-web/quiz-question-02.webp",
@@ -61,6 +62,34 @@ const WAVEFORM_HEIGHTS = [8, 14, 24, 34, 20, 12, 28, 38, 18, 30, 16, 36, 22, 12,
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+function preloadImage(src: string) {
+  return new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error(`Failed to preload ${src}`));
+    image.src = src;
+  });
+}
+
+async function preloadAlibabaFont() {
+  if (!("fonts" in document)) return;
+  await Promise.all([
+    document.fonts.load('500 16px "Alibaba PuHuiTi"'),
+    document.fonts.load('600 16px "Alibaba PuHuiTi"'),
+    document.fonts.load('900 32px "Alibaba PuHuiTi"'),
+  ]);
+}
+
+async function preloadResultFonts() {
+  if (!("fonts" in document)) return;
+  await Promise.all([
+    document.fonts.load('500 14px "Alibaba PuHuiTi"'),
+    document.fonts.load('600 16px "Alibaba PuHuiTi"'),
+    document.fonts.load('700 36px "Alibaba PuHuiTi"'),
+  ]);
 }
 
 function nextWheelRotation(currentRotation: number, prizeLevel: LotteryPrize["prizeLevel"]) {
@@ -92,6 +121,7 @@ function App() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
+  const [drawReminderOpen, setDrawReminderOpen] = useState(false);
   const selectTimer = useRef<number | null>(null);
   const currentQuestion = QUESTIONS[questionIndex];
   const activeResult = result;
@@ -127,21 +157,40 @@ function App() {
   }, [screen, activeResult, resultBackground]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setLoadingProgress((current) => {
-        const next = Math.min(current + Math.ceil(Math.random() * 14), 100);
-        if (next >= 100) {
-          window.clearInterval(timer);
-          window.setTimeout(async () => {
-            const nextSession = await activityApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct");
-            setSession(nextSession);
-            setScreen("home");
-          }, 260);
-        }
-        return next;
-      });
+    let cancelled = false;
+    let revealTimer = 0;
+    const progressTimer = window.setInterval(() => {
+      setLoadingProgress((current) => Math.min(current + 3 + Math.floor(Math.random() * 3), 92));
     }, 140);
-    return () => window.clearInterval(timer);
+
+    void Promise.all([
+      activityApi.createSession(new URLSearchParams(window.location.search).get("channel") ?? "direct"),
+      Promise.all([
+        preloadImage(`/assets/figma/figma-home-bg.png?v=${UPDATED_ASSET_VERSION}`),
+        preloadImage(`/assets/figma/figma-home-title.png?v=${UPDATED_ASSET_VERSION}`),
+        preloadImage(`/assets/figma/figma-tata-logo.png?v=${UPDATED_ASSET_VERSION}`),
+        preloadAlibabaFont(),
+      ]),
+      wait(INITIAL_LOADING_MIN_MS),
+    ])
+      .then(([nextSession]) => {
+        if (cancelled) return;
+        window.clearInterval(progressTimer);
+        setSession(nextSession);
+        setLoadingProgress(100);
+        revealTimer = window.setTimeout(() => {
+          if (!cancelled) setScreen("home");
+        }, 220);
+      })
+      .catch(() => {
+        if (!cancelled) setToast("页面资源加载失败，请刷新后重试");
+      });
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(progressTimer);
+      window.clearTimeout(revealTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -168,6 +217,7 @@ function App() {
     setPosterPreviewOpen(false);
     setWheelSpinMode("idle");
     setWheelRotation(0);
+    setDrawReminderOpen(false);
     setValidation("");
     setScreen("quiz");
   }
@@ -199,9 +249,15 @@ function App() {
       const loadingStartedAt = Date.now();
       try {
         const nextResult = await activityApi.submitQuiz(nextAnswers);
-        await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
+        const nextBackground = pickResultBackground(nextResult.productKey);
+        await Promise.all([
+          wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
+          preloadImage(nextBackground),
+          preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
+          preloadResultFonts(),
+        ]);
         setResult(nextResult);
-        setResultBackground(pickResultBackground(nextResult.productKey));
+        setResultBackground(nextBackground);
         audioEngine.play("reveal");
         setScreen("result");
       } catch {
@@ -218,9 +274,15 @@ function App() {
     const loadingStartedAt = Date.now();
     try {
       const nextResult = await activityApi.submitQuiz(answers);
-      await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
+      const nextBackground = pickResultBackground(nextResult.productKey);
+      await Promise.all([
+        wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt))),
+        preloadImage(nextBackground),
+        preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
+        preloadResultFonts(),
+      ]);
       setResult(nextResult);
-      setResultBackground(pickResultBackground(nextResult.productKey));
+      setResultBackground(nextBackground);
       setScreen("result");
     } catch {
       await wait(Math.max(0, RESULT_LOADING_MIN_MS - (Date.now() - loadingStartedAt)));
@@ -291,6 +353,8 @@ function App() {
         setToast(H5_COPY.system.drawLeadRequired);
       } else if (error instanceof LotteryRuleError && error.code === "ACTIVITY_INACTIVE") {
         setToast(H5_COPY.system.drawInactive);
+      } else if (error instanceof LotteryRuleError && ["PHONE_ALREADY_DRAWN", "DEVICE_ALREADY_DRAWN"].includes(error.code)) {
+        setDrawReminderOpen(true);
       } else {
         setToast(H5_COPY.system.drawFailed);
       }
@@ -313,6 +377,7 @@ function App() {
     setPosterPreviewOpen(false);
     setWheelSpinMode("idle");
     setWheelRotation(0);
+    setDrawReminderOpen(false);
     setValidation("");
     setScreen("home");
   }
@@ -340,6 +405,7 @@ function App() {
         {screen === "quiz" && currentQuestion && (
           <QuizScreen
             answer={answers[questionIndex]}
+            completedAnswerCount={answers.filter(Boolean).length}
             question={currentQuestion}
             questionIndex={questionIndex}
             onBack={handleBackInQuiz}
@@ -391,6 +457,7 @@ function App() {
         {legalDocument && (
           <LegalDocumentModal documentKey={legalDocument} onClose={() => setLegalDocument(null)} />
         )}
+        {drawReminderOpen && <DrawReminderModal onClose={() => setDrawReminderOpen(false)} />}
         {posterPreviewOpen && (
           <WeChatPosterPreview
             dataUrl={posterDataUrl}
@@ -423,18 +490,60 @@ function LoadingScreen({ progress }: { progress: number }) {
 }
 
 function Waveform({ className = "" }: { className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d", { alpha: true });
+    if (!context) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let frame = 0;
+    let width = 0;
+    let height = 0;
+
+    const resize = () => {
+      const bounds = canvas.getBoundingClientRect();
+      const ratio = Math.min(window.devicePixelRatio || 1, 3);
+      width = bounds.width;
+      height = bounds.height;
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+
+    const draw = (time: number) => {
+      context.clearRect(0, 0, width, height);
+      context.fillStyle = "#c80028";
+      const barWidth = 3;
+      const gap = 3;
+      const waveformWidth = WAVEFORM_HEIGHTS.length * barWidth + (WAVEFORM_HEIGHTS.length - 1) * gap;
+      const startX = Math.round((width - waveformWidth) / 2);
+      WAVEFORM_HEIGHTS.forEach((maximum, index) => {
+        const motion = reduceMotion ? 1 : 0.58 + 0.42 * ((Math.sin(time / 150 + index * 0.72) + 1) / 2);
+        const barHeight = Math.max(4, Math.round(maximum * motion));
+        context.fillRect(startX + index * (barWidth + gap), Math.round((height - barHeight) / 2), barWidth, barHeight);
+      });
+      if (!reduceMotion) frame = window.requestAnimationFrame(draw);
+    };
+
+    resize();
+    draw(0);
+    const observer = new ResizeObserver(() => {
+      resize();
+      if (reduceMotion) draw(0);
+    });
+    observer.observe(canvas);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+      context.clearRect(0, 0, width, height);
+    };
+  }, []);
+
   return (
     <div className={`figma-waveform ${className}`.trim()} aria-hidden="true">
-      {WAVEFORM_HEIGHTS.map((height, index) => (
-        <i
-          key={`${height}-${index}`}
-          style={{
-            "--wave-height": `${height}px`,
-            "--wave-min-height": `${Math.max(4, Math.round(height * 0.58))}px`,
-            "--wave-delay": `${index * -43}ms`,
-          } as CSSProperties}
-        />
-      ))}
+      <canvas ref={canvasRef} />
     </div>
   );
 }
@@ -452,8 +561,8 @@ function HomeScreen({
 }) {
   return (
     <section className="screen figma-screen figma-home-screen">
-      <img className="figma-bg" src="/assets/figma/figma-home-bg.png" alt="" aria-hidden="true" />
-      <img className="figma-home-logo" src="/assets/figma/figma-tata-logo.png" alt={H5_COPY.loading.brand} />
+      <img className="figma-bg" src={`/assets/figma/figma-home-bg.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
+      <img className="figma-home-logo" src={`/assets/figma/figma-tata-logo.png?v=${UPDATED_ASSET_VERSION}`} alt={H5_COPY.loading.brand} />
       <div className="figma-home-actions">
         <button
           type="button"
@@ -570,14 +679,38 @@ function LegalDocumentModal({ documentKey, onClose }: { documentKey: LegalDocume
   );
 }
 
+function DrawReminderModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="draw-reminder-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="draw-reminder-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="draw-reminder-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="draw-reminder-close" type="button" onClick={onClose} aria-label="关闭温馨提醒">
+          <X size={18} />
+        </button>
+        <span>WARM REMINDER</span>
+        <h2 id="draw-reminder-title">温馨提醒</h2>
+        <p>该手机号已参与过抽奖，每个手机号仅有一次抽奖机会。感谢您的参与！</p>
+        <button className="draw-reminder-confirm" type="button" onClick={onClose}>我知道了</button>
+      </section>
+    </div>
+  );
+}
+
 function QuizScreen({
   answer,
+  completedAnswerCount,
   question,
   questionIndex,
   onBack,
   onSelect,
 }: {
   answer?: OptionKey;
+  completedAnswerCount: number;
   question: (typeof QUESTIONS)[number];
   questionIndex: number;
   onBack: () => void;
@@ -595,7 +728,7 @@ function QuizScreen({
       </div>
       <div className="figma-quiz-progress" aria-hidden="true">
         <span>{String(questionIndex + 1).padStart(2, "0")}</span>
-        <i><b style={{ width: `${((questionIndex + 1) / QUESTIONS.length) * 100}%` }} /></i>
+        <i><b style={{ width: `${(completedAnswerCount / QUESTIONS.length) * 100}%` }} /></i>
         <span>05</span>
       </div>
       <div className="figma-quiz-visual-frame">
@@ -729,7 +862,7 @@ function FigmaResultScreen({
     <section className="screen figma-screen figma-static-screen figma-result-screen">
       <div
         className="figma-static-canvas figma-result-canvas"
-        style={{ "--result-bg": theme.bg, "--result-accent": theme.accent, "--result-button": theme.button } as CSSProperties}
+        style={{ "--result-bg": theme.bg, "--result-accent": theme.accent, "--result-button": theme.button, "--result-card-text": theme.cardText } as CSSProperties}
       >
         <img className="figma-result-scene" src={background || getResultBackgroundUrl(result.productKey, 1)} alt="" aria-hidden="true" />
         <button className="figma-back-button figma-result-visible-back" type="button" onClick={onBack} aria-label="返回">

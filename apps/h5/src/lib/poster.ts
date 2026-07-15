@@ -4,36 +4,20 @@ import type { QuizResult } from "../types";
 
 const POSTER_LOGO = "/assets/figma/figma-tata-logo.png";
 const POSTER_TITLE = "/assets/figma/result-titles";
-const POSTER_ASSET_VERSION = "20260713-2";
+const POSTER_ASSET_VERSION = "20260715-1";
 
 const POSTER_META = {
   level1: {
     bg: "#d6b36d",
-    accent: "#956a3f",
-    qrBg: "#f5dfb7",
-    roman: "Ⅰ",
-    value: "隔声量20(dB)≤Rw+C<25(dB)",
   },
   level2: {
     bg: "#c18be4",
-    accent: "#4b2b7c",
-    qrBg: "#ead8f5",
-    roman: "Ⅱ",
-    value: "隔声量25(dB)≤Rw+C<30(dB)",
   },
   level3: {
     bg: "#bed8c7",
-    accent: "#203c36",
-    qrBg: "#d9ecdf",
-    roman: "Ⅲ",
-    value: "隔声量30(dB)≤Rw+C<35(dB)",
   },
   level4: {
     bg: "#b9d8ef",
-    accent: "#1a75b4",
-    qrBg: "#dcecf7",
-    roman: "Ⅳ",
-    value: "隔声量Rw+C≥35(dB)",
   },
 } as const;
 
@@ -69,6 +53,7 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   if (!context) throw new Error("Canvas is not supported");
 
   const meta = POSTER_META[result.productKey];
+  await document.fonts.load('600 16px "Alibaba PuHuiTi"');
   const [logo, scene, levelTitle] = await Promise.all([
     loadImage(POSTER_LOGO),
     loadImage(sceneUrl || `/assets/result-backgrounds-web/${result.productKey}/1.webp`),
@@ -80,116 +65,61 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   context.fillRect(0, 0, 375, 700);
   context.drawImage(logo, 107, 22, 161, 33);
 
-  coverImage(context, scene, 42, 68, 292, 520);
+  coverImage(context, scene, 42, 68, 292, 553);
   context.drawImage(levelTitle, 84, 101, 207, 134);
-  drawCard(context, result, meta);
-  drawQrArea(context, meta.qrBg);
+  drawQrArea(context);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, ACTIVITY_CONFIG.shareUrl, {
-    width: 154,
+    width: 156,
     margin: 1,
-    color: { dark: "#2b2424", light: meta.qrBg },
+    errorCorrectionLevel: "M",
+    color: { dark: "#2b2424", light: "#ffffff" },
   });
-  context.drawImage(qrCanvas, 72, 595, 82, 82);
+  context.drawImage(qrCanvas, 237, 595, 78, 78);
 
   context.fillStyle = "#ffffff";
-  context.font = '700 18px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
+  context.font = '600 16px "Alibaba PuHuiTi", sans-serif';
+  context.textAlign = "right";
   context.textBaseline = "top";
-  context.fillText("扫码生成", 169, 605);
-  context.fillText("我的静音人格海报", 169, 633);
+  context.fillText("扫码生成", 190, 630);
+  context.fillText("我的静音人格海报", 195, 655);
+  context.beginPath();
+  context.moveTo(196, 635);
+  context.lineTo(201, 639);
+  context.lineTo(196, 643);
+  context.strokeStyle = "#ffffff";
+  context.lineWidth = 1.5;
+  context.stroke();
 
   return canvas.toDataURL("image/png");
 }
 
-function drawCard(
-  context: CanvasRenderingContext2D,
-  result: QuizResult,
-  meta: (typeof POSTER_META)[QuizResult["productKey"]],
-) {
-  context.save();
-  roundedRect(context, 69, 256, 239, 146, 15);
-  context.fillStyle = "rgba(255, 255, 255, 0.72)";
-  context.fill();
-  roundedRect(context, 80, 242, 76, 21, 5);
-  context.fillStyle = "rgba(255, 255, 255, 0.75)";
-  context.fill();
-
-  context.fillStyle = meta.accent;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font = '500 15px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  context.fillText("静音人格", 118, 252.5);
-  context.font = '900 36px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  context.fillText(result.title, 188.5, 304);
-
-  context.font = '500 14px "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
-  const lines = wrapText(context, formatDescription(result), 221);
-  lines.slice(0, 3).forEach((line, index) => context.fillText(line, 188.5, 337 + index * 20));
-  context.restore();
-}
-
-function formatDescription(result: QuizResult) {
-  const roman = POSTER_META[result.productKey].roman;
-  return result.description
-    .replace("IV级", `${roman}级`)
-    .replace("III级", `${roman}级`)
-    .replace("II级", `${roman}级`)
-    .replace("I级", `${roman}级`);
-}
-
-function drawQrArea(context: CanvasRenderingContext2D, background: string) {
+function drawQrArea(context: CanvasRenderingContext2D) {
   context.save();
   context.shadowColor = "#2b2424";
   context.shadowBlur = 0;
-  context.shadowOffsetX = 4;
-  context.shadowOffsetY = 5;
-  context.fillStyle = background;
-  roundedRect(context, 58, 585, 102, 96, 4);
-  context.fill();
+  context.shadowOffsetX = 3;
+  context.shadowOffsetY = 3;
+  context.fillStyle = "#ffffff";
+  context.fillRect(231, 589, 90, 90);
   context.restore();
 
-  context.strokeStyle = "#2b2424";
-  context.lineWidth = 1.2;
+  context.strokeStyle = "rgba(255, 255, 255, 0.92)";
+  context.lineWidth = 1;
+  context.strokeRect(231.5, 589.5, 89, 89);
   context.beginPath();
-  context.moveTo(58, 608);
-  context.lineTo(58, 585);
-  context.lineTo(156, 585);
-  context.lineTo(160, 608);
-  context.moveTo(160, 657);
-  context.lineTo(156, 681);
-  context.lineTo(58, 681);
-  context.lineTo(58, 657);
+  context.moveTo(231, 601);
+  context.lineTo(231, 589);
+  context.lineTo(243, 589);
+  context.moveTo(309, 589);
+  context.lineTo(321, 589);
+  context.lineTo(321, 601);
+  context.moveTo(321, 667);
+  context.lineTo(321, 679);
+  context.lineTo(309, 679);
+  context.moveTo(243, 679);
+  context.lineTo(231, 679);
+  context.lineTo(231, 667);
   context.stroke();
-}
-
-function wrapText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
-  const lines: string[] = [];
-  let current = "";
-  for (const char of text) {
-    const next = current + char;
-    if (context.measureText(next).width > maxWidth && current) {
-      lines.push(current);
-      current = char;
-    } else {
-      current = next;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-function roundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
-  const corner = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + corner, y);
-  context.lineTo(x + width - corner, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + corner);
-  context.lineTo(x + width, y + height - corner);
-  context.quadraticCurveTo(x + width, y + height, x + width - corner, y + height);
-  context.lineTo(x + corner, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - corner);
-  context.lineTo(x, y + corner);
-  context.quadraticCurveTo(x, y, x + corner, y);
-  context.closePath();
 }
