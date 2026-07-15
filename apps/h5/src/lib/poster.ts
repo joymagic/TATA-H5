@@ -9,19 +9,19 @@ const POSTER_ASSET_VERSION = "20260715-1";
 const POSTER_META = {
   level1: {
     bg: "#d6b36d",
-    qrBorder: "#edd8b2",
+    accent: "#edd8b2",
   },
   level2: {
     bg: "#c18be4",
-    qrBorder: "#dfb9ff",
+    accent: "#dfb9ff",
   },
   level3: {
     bg: "#bed8c7",
-    qrBorder: "#c9edd2",
+    accent: "#c9edd2",
   },
   level4: {
     bg: "#b9d8ef",
-    qrBorder: "#c0e3ff",
+    accent: "#c0e3ff",
   },
 } as const;
 
@@ -57,7 +57,11 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   if (!context) throw new Error("Canvas is not supported");
 
   const meta = POSTER_META[result.productKey];
-  await document.fonts.load('600 16px "Alibaba PuHuiTi"');
+  await Promise.all([
+    document.fonts.load('500 14px "Alibaba PuHuiTi"'),
+    document.fonts.load('600 16px "Alibaba PuHuiTi"'),
+    document.fonts.load('700 36px "Alibaba PuHuiTi"'),
+  ]);
   const [logo, scene, levelTitle] = await Promise.all([
     loadImage(POSTER_LOGO),
     loadImage(sceneUrl || `/assets/result-backgrounds-web/${result.productKey}/1.webp`),
@@ -71,7 +75,8 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
 
   coverImage(context, scene, 42, 68, 292, 553);
   context.drawImage(levelTitle, 84, 101, 207, 134);
-  drawQrArea(context, meta.qrBorder);
+  drawResultCard(context, result, meta.accent);
+  drawQrArea(context, meta.accent);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, ACTIVITY_CONFIG.shareUrl, {
@@ -97,6 +102,110 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   context.stroke();
 
   return canvas.toDataURL("image/png");
+}
+
+function drawResultCard(context: CanvasRenderingContext2D, result: QuizResult, accent: string) {
+  const x = 58;
+  const y = 236;
+  const width = 260;
+  const height = 170;
+
+  context.save();
+  drawCutCornerRect(context, x, y, width, height, 13, 12);
+  context.fillStyle = "rgba(0, 0, 0, 0.6)";
+  context.fill();
+  context.strokeStyle = accent;
+  context.lineWidth = 1.5;
+  context.stroke();
+
+  const labelX = 73;
+  const labelY = 226;
+  const labelWidth = 77;
+  const labelHeight = 23;
+  context.beginPath();
+  context.moveTo(labelX + 8, labelY);
+  context.lineTo(labelX + labelWidth, labelY);
+  context.lineTo(labelX + labelWidth - 8, labelY + labelHeight);
+  context.lineTo(labelX, labelY + labelHeight);
+  context.closePath();
+  const labelGradient = context.createLinearGradient(labelX, labelY, labelX + labelWidth, labelY);
+  labelGradient.addColorStop(0, "#f8e3b9");
+  labelGradient.addColorStop(1, accent);
+  context.fillStyle = labelGradient;
+  context.fill();
+
+  context.fillStyle = "#40270e";
+  context.font = '700 16px "Alibaba PuHuiTi", sans-serif';
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText("静音人格", labelX + labelWidth / 2, labelY + labelHeight / 2);
+
+  context.fillStyle = accent;
+  context.font = '700 36px "Alibaba PuHuiTi", sans-serif';
+  context.textBaseline = "top";
+  context.fillText(result.title, x + width / 2, 261);
+
+  context.font = '500 14px "Alibaba PuHuiTi", sans-serif';
+  drawWrappedText(context, formatPosterDescription(result.description), x + 20, 325, 221, 19);
+  context.restore();
+}
+
+function drawCutCornerRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  cornerX: number,
+  cornerY: number,
+) {
+  context.beginPath();
+  context.moveTo(x + cornerX, y);
+  context.lineTo(x + width - cornerX, y);
+  context.lineTo(x + width, y + cornerY);
+  context.lineTo(x + width, y + height - cornerY);
+  context.lineTo(x + width - cornerX, y + height);
+  context.lineTo(x + cornerX, y + height);
+  context.lineTo(x, y + height - cornerY);
+  context.lineTo(x, y + cornerY);
+  context.closePath();
+}
+
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  const lines: string[] = [];
+  const cannotStartLine = /[，。！？、；：）】》]/;
+  let line = "";
+  for (const character of text) {
+    const candidate = line + character;
+    if (line && context.measureText(candidate).width > maxWidth) {
+      lines.push(cannotStartLine.test(character) ? candidate : line);
+      line = cannotStartLine.test(character) ? "" : character;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  lines.slice(0, 3).forEach((value, index) => {
+    context.fillText(value, x + maxWidth / 2, y + index * lineHeight);
+  });
+}
+
+function formatPosterDescription(description: string) {
+  return description
+    .replace("IV级", "Ⅳ级")
+    .replace("III级", "Ⅲ级")
+    .replace("II级", "Ⅱ级")
+    .replace("I级", "Ⅰ级");
 }
 
 function drawQrArea(context: CanvasRenderingContext2D, borderColor: string) {

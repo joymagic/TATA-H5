@@ -1411,16 +1411,8 @@ button:disabled {
   text-align: center;
 }
 
-.draw-reminder-modal > span {
-  display: block;
-  color: #b6001f;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 3px;
-}
-
 .draw-reminder-modal h2 {
-  margin: 8px 0 10px;
+  margin: 0 0 10px;
   font-size: 24px;
   font-weight: 900;
 }
@@ -2328,7 +2320,8 @@ button:disabled {
   left: 15.47%;
   top: 30.3%;
   width: 69.33%;
-  height: 20.94%;
+  height: auto;
+  aspect-ratio: 260 / 170;
   margin: 0;
   padding: 0;
   color: var(--result-card-text);
@@ -2362,8 +2355,8 @@ button:disabled {
 .figma-dynamic-card span {
   position: absolute;
   z-index: 2;
-  left: 15px;
-  top: -10px;
+  left: 5.77%;
+  top: -5.88%;
   display: grid;
   width: 77px;
   height: 23px;
@@ -2379,9 +2372,9 @@ button:disabled {
 .figma-dynamic-card h1 {
   position: absolute;
   z-index: 1;
-  left: 20px;
-  top: 25px;
-  width: 221px;
+  left: 7.69%;
+  top: 14.71%;
+  width: 85%;
   margin: 0;
   font-size: 36px;
   font-weight: 700;
@@ -2392,9 +2385,9 @@ button:disabled {
 .figma-dynamic-card p {
   position: absolute;
   z-index: 1;
-  left: 20px;
-  top: 89px;
-  width: 221px;
+  left: 7.69%;
+  top: 52.35%;
+  width: 85%;
   margin: 0;
   font-size: 14px;
   font-weight: 500;

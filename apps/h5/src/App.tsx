@@ -672,7 +672,6 @@ function DrawReminderModal({ onClose }: { onClose: () => void }) {
         <button className="draw-reminder-close" type="button" onClick={onClose} aria-label="关闭温馨提醒">
           <X size={18} />
         </button>
-        <span>WARM REMINDER</span>
         <h2 id="draw-reminder-title">温馨提醒</h2>
         <p>该手机号已参与过抽奖，每个手机号仅有一次抽奖机会。感谢您的参与！</p>
         <button className="draw-reminder-confirm" type="button" onClick={onClose}>我知道了</button>
