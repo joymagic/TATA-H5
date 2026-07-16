@@ -75,3 +75,9 @@ pnpm package:tcfzyq
 ```
 
 将压缩包上传到服务器并解压后，以 root 执行包内的 `deploy.sh`。脚本会安装运行依赖、配置 Nginx 与 systemd，并在两个域名都解析到目标服务器后申请 HTTPS 证书。
+
+如临时回退到其他服务器，可传入目标 IP；DNS 尚未生效时可先完成 HTTP/API 部署：
+
+```bash
+sudo EXPECTED_IP=139.155.151.236 ALLOW_PENDING_DNS=1 ./deploy.sh
+```

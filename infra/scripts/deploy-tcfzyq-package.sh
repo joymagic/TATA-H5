@@ -6,7 +6,8 @@ readonly PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly TARGET_ROOT="/srv/tata-h5/tcfzyq"
 readonly RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 readonly RELEASE_DIR="${TARGET_ROOT}/releases/${RELEASE_ID}"
-readonly EXPECTED_IP="82.157.98.16"
+readonly EXPECTED_IP="${EXPECTED_IP:-82.157.98.16}"
+readonly ALLOW_PENDING_DNS="${ALLOW_PENDING_DNS:-0}"
 
 if [[ "${EUID}" -ne 0 ]]; then
   printf 'Run this deployment script as root.\n' >&2
@@ -94,12 +95,21 @@ nginx -t
 systemctl enable --now nginx
 systemctl reload nginx
 
+dns_ready=1
 for domain in tcfzyq.online admin.tcfzyq.online; do
   if ! getent ahostsv4 "${domain}" | awk '{print $1}' | grep -qx "${EXPECTED_IP}"; then
     printf '%s does not resolve to %s yet.\n' "${domain}" "${EXPECTED_IP}" >&2
-    exit 1
+    dns_ready=0
   fi
 done
+
+if [[ "${dns_ready}" -ne 1 ]]; then
+  if [[ "${ALLOW_PENDING_DNS}" == "1" ]]; then
+    printf 'HTTP/API deployment is ready. Re-run deploy.sh after DNS points both domains to %s to enable HTTPS.\n' "${EXPECTED_IP}"
+    exit 0
+  fi
+  exit 1
+fi
 
 certbot --nginx \
   --non-interactive \
