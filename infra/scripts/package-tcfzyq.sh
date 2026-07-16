@@ -47,7 +47,7 @@ printf '%s\n' \
   "admin=https://admin.tcfzyq.online/" \
   > "${STAGING_DIR}/BUILD_INFO"
 
-tar -C "${STAGING_DIR}" -czf "${ARCHIVE}" .
+COPYFILE_DISABLE=1 tar --no-xattrs -C "${STAGING_DIR}" -czf "${ARCHIVE}" .
 shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
 
 printf 'Created %s\n' "${ARCHIVE}"
