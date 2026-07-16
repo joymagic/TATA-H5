@@ -113,15 +113,19 @@ function App() {
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   useEffect(() => {
-    audioEngine.preload();
     const resumeAudio = () => {
       void audioEngine.resumeFromGesture();
     };
+    const resumeWeChatAudio = () => {
+      audioEngine.resumeFromWeChatBridge();
+    };
     window.addEventListener("pointerdown", resumeAudio, { once: true });
-    document.addEventListener("WeixinJSBridgeReady", resumeAudio, { once: true });
+    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
+    audioEngine.preload();
+    resumeWeChatAudio();
     return () => {
       window.removeEventListener("pointerdown", resumeAudio);
-      document.removeEventListener("WeixinJSBridgeReady", resumeAudio);
+      document.removeEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     };
   }, []);
 

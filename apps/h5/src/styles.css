@@ -1769,7 +1769,7 @@ button:disabled {
 .figma-home-copy p {
   position: absolute;
   left: 11px;
-  top: 132px;
+  top: calc(min(28vw, 120px) + 32px);
   width: 224px;
   margin: 0;
   color: #2b2424;

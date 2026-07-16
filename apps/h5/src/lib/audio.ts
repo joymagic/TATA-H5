@@ -2,6 +2,14 @@ type SoundName = "tap" | "select" | "scan" | "reveal" | "spin" | "win";
 
 const MUSIC_URL = "/assets/audio/sunlight-in-the-living-room.mp3";
 
+declare global {
+  interface Window {
+    WeixinJSBridge?: {
+      invoke: (method: string, params: Record<string, never>, callback: () => void) => void;
+    };
+  }
+}
+
 class AudioEngine {
   private context: AudioContext | null = null;
   private music: HTMLAudioElement | null = null;
@@ -42,8 +50,18 @@ class AudioEngine {
   async resumeFromGesture() {
     if (!this.enabled) return;
     this.ensureContext();
-    if (this.music?.paused) {
-      await this.music.play().catch(() => undefined);
+    await this.resumeMusic();
+  }
+
+  resumeFromWeChatBridge() {
+    const bridge = window.WeixinJSBridge;
+    if (!this.enabled || typeof bridge?.invoke !== "function") return;
+    try {
+      bridge.invoke("getNetworkType", {}, () => {
+        void this.resumeMusic();
+      });
+    } catch {
+      void this.resumeMusic();
     }
   }
 
@@ -88,6 +106,13 @@ class AudioEngine {
     music.volume = 0.32;
     this.music = music;
     return music;
+  }
+
+  private async resumeMusic() {
+    const music = this.ensureMusic();
+    if (music.paused) {
+      await music.play().catch(() => undefined);
+    }
   }
 
   private frequency(name: SoundName) {
