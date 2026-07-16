@@ -9,7 +9,7 @@ Group=www-data
 WorkingDirectory=/srv/tata-h5/tcfzyq/current
 Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
-Environment=PORT=8787
+Environment=PORT=8788
 Environment=FAT_DB_PATH=/srv/tata-h5/tcfzyq/data/tata.sqlite
 EnvironmentFile=-/etc/tata-tcfzyq-api.env
 ExecStart=/usr/bin/node /srv/tata-h5/tcfzyq/current/apps/api/src/server.mjs

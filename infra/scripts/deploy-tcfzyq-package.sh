@@ -69,7 +69,7 @@ install -m 0644 "${PACKAGE_ROOT}/BUILD_INFO" "${RELEASE_DIR}/BUILD_INFO"
 ln -sfn "${RELEASE_DIR}" "${TARGET_ROOT}/current"
 
 install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-static-security.conf" /etc/nginx/snippets/tata-static-security.conf
-install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-fat-routes.conf" /etc/nginx/snippets/tata-fat-routes.conf
+install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-tcfzyq-routes.conf" /etc/nginx/snippets/tata-tcfzyq-routes.conf
 install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-tcfzyq.conf" /etc/nginx/sites-available/tata-tcfzyq.conf
 ln -sfn /etc/nginx/sites-available/tata-tcfzyq.conf /etc/nginx/sites-enabled/tata-tcfzyq.conf
 
@@ -84,12 +84,12 @@ systemctl enable tata-tcfzyq-api
 systemctl restart tata-tcfzyq-api
 
 for attempt in {1..30}; do
-  if curl -fsS http://127.0.0.1:8787/api/v1/health >/dev/null; then
+  if curl -fsS http://127.0.0.1:8788/api/v1/health >/dev/null; then
     break
   fi
   sleep 1
 done
-curl -fsS http://127.0.0.1:8787/api/v1/health >/dev/null
+curl -fsS http://127.0.0.1:8788/api/v1/health >/dev/null
 
 nginx -t
 systemctl enable --now nginx
