@@ -31,12 +31,12 @@ test("H5 records a real lead and Admin reads the same database", async () => {
   const result = await request(`/api/v1/h5/sessions/${token}/quiz`, { answers: ["A", "A", "A", "A", "A"] });
   assert.equal(result.data.title, "悦己淡人");
   assert.equal(result.data.levelName, "柔静级");
-  assert.equal(result.data.description, "家就是我的充电站，日常喜欢客厅闲坐、茶室品茗，我需要柔静级 I级静音，满足我的基础隔音需求。");
+  assert.equal(result.data.description, "家就是我的充电站\n日常喜欢客厅闲坐、茶室品茗\n我需要柔静级 Ⅰ级静音\n满足我的基础隔音需求");
 
   const remainingResults = [
-    ["B", "沉浸领主", "沉静级", "我是独处至上星人，在家喜欢看书、娱乐、学习，我需要沉静级 II级静音，让我独享沉浸小世界。"],
-    ["C", "安睡主宰", "宁静级", "我是睡眠刚需人，一点噪音直接失眠，我需要宁静级 III级静音，给我整夜深睡守护。"],
-    ["D", "头号玩家", "臻静级", "宅家也能当头号玩家，热衷激情上分和观影，我需要臻静级 IV级静音，尽情释放自己的热爱。"],
+    ["B", "沉浸领主", "沉静级", "我是独处至上星人\n在家喜欢看书、娱乐、学习\n我需要沉静级 Ⅱ级静音\n让我独享沉浸小世界"],
+    ["C", "安睡主宰", "宁静级", "我是睡眠刚需人\n一点噪音直接失眠\n我需要宁静级 Ⅲ 级静音\n给我整夜深睡守护"],
+    ["D", "头号玩家", "臻静级", "宅家也能当头号玩家\n热衷激情上分和观影\n我需要臻静级 Ⅳ 级静音\n尽情释放自己的热爱"],
   ];
   for (const [answer, title, levelName, description] of remainingResults) {
     const extraSession = await request("/api/v1/h5/sessions", { deviceId: `fat-test-${answer}`, channel: "automated-fat" });

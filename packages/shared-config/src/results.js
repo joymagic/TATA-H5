@@ -9,7 +9,7 @@ export const RESULTS = [
     minScore: 8,
     maxScore: 13,
     description:
-      "家就是我的充电站，日常喜欢客厅闲坐、茶室品茗，我需要柔静级 I级静音，满足我的基础隔音需求。",
+      "家就是我的充电站\n日常喜欢客厅闲坐、茶室品茗\n我需要柔静级 Ⅰ级静音\n满足我的基础隔音需求",
     productKey: "level1",
   },
   {
@@ -22,7 +22,7 @@ export const RESULTS = [
     minScore: 14,
     maxScore: 19,
     description:
-      "我是独处至上星人，在家喜欢看书、娱乐、学习，我需要沉静级 II级静音，让我独享沉浸小世界。",
+      "我是独处至上星人\n在家喜欢看书、娱乐、学习\n我需要沉静级 Ⅱ级静音\n让我独享沉浸小世界",
     productKey: "level2",
   },
   {
@@ -35,7 +35,7 @@ export const RESULTS = [
     minScore: 20,
     maxScore: 25,
     description:
-      "我是睡眠刚需人，一点噪音直接失眠，我需要宁静级 III级静音，给我整夜深睡守护。",
+      "我是睡眠刚需人\n一点噪音直接失眠\n我需要宁静级 Ⅲ 级静音\n给我整夜深睡守护",
     productKey: "level3",
   },
   {
@@ -48,7 +48,7 @@ export const RESULTS = [
     minScore: 26,
     maxScore: 32,
     description:
-      "宅家也能当头号玩家，热衷激情上分和观影，我需要臻静级 IV级静音，尽情释放自己的热爱。",
+      "宅家也能当头号玩家\n热衷激情上分和观影\n我需要臻静级 Ⅳ 级静音\n尽情释放自己的热爱",
     productKey: "level4",
   },
 ];

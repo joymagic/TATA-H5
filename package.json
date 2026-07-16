@@ -8,6 +8,7 @@
     "dev:admin": "pnpm --filter @tata/admin dev",
     "build": "pnpm --filter @tata/h5 build && pnpm --filter @tata/admin build",
     "build:fat": "pnpm --filter @tata/h5 build:fat && pnpm --filter @tata/admin build:fat",
+    "build:tcfzyq": "pnpm --filter @tata/h5 build:tcfzyq && pnpm --filter @tata/admin build:tcfzyq",
     "build:testing": "pnpm --filter @tata/h5 build:testing && pnpm --filter @tata/admin build:testing",
     "build:production": "pnpm --filter @tata/h5 build:production && pnpm --filter @tata/admin build:production",
     "build:deploy": "pnpm build:testing && pnpm build:production",
@@ -17,7 +18,8 @@
     "typecheck": "pnpm --filter @tata/h5 typecheck && pnpm --filter @tata/admin typecheck",
     "test": "node tests/score.test.mjs && node tests/browser.test.mjs && pnpm --filter @tata/api test",
     "generate:coupons": "node scripts/generate-coupons.cjs",
-    "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs"
+    "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs",
+    "package:tcfzyq": "bash infra/scripts/package-tcfzyq.sh"
   },
   "packageManager": "pnpm@11.7.0"
 }

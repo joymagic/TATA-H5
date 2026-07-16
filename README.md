@@ -58,3 +58,20 @@ FAT 代码快照目录为 `/srv/tata-h5/fat/repo`，FAT 静态目录为 `/srv/ta
 ```bash
 sudo bash infra/scripts/deploy-fat.sh
 ```
+
+## tcfzyq.online 测试环境
+
+H5 与 Admin 使用同源 API，并部署到独立目录 `/srv/tata-h5/tcfzyq`：
+
+```text
+H5:    https://tcfzyq.online/
+Admin: https://admin.tcfzyq.online/
+```
+
+本地生成上传包：
+
+```bash
+pnpm package:tcfzyq
+```
+
+将压缩包上传到服务器并解压后，以 root 执行包内的 `deploy.sh`。脚本会安装运行依赖、配置 Nginx 与 systemd，并在两个域名都解析到目标服务器后申请 HTTPS 证书。

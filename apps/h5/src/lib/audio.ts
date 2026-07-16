@@ -5,7 +5,7 @@ const MUSIC_URL = "/assets/audio/sunlight-in-the-living-room.mp3";
 class AudioEngine {
   private context: AudioContext | null = null;
   private music: HTMLAudioElement | null = null;
-  private enabled = false;
+  private enabled = true;
   private loopNodes: { oscillator: OscillatorNode; gain: GainNode }[] = [];
   private ambientMaster: GainNode | null = null;
   private ambientTimer: number | null = null;
@@ -16,7 +16,9 @@ class AudioEngine {
   }
 
   preload() {
-    this.ensureMusic().load();
+    const music = this.ensureMusic();
+    music.load();
+    void music.play().catch(() => undefined);
   }
 
   async toggle() {

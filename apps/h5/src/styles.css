@@ -1744,13 +1744,14 @@ button:disabled {
   left: 5.07%;
   top: 16.63%;
   width: 83.2%;
+  height: 19.21%;
 }
 
 .figma-home-title-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 312 / 100;
-  transform: rotate(-0.7deg);
+  aspect-ratio: 312 / 156;
+  animation: home-title-float 3.6s ease-in-out infinite;
   transform-origin: center;
 }
 
@@ -1766,11 +1767,26 @@ button:disabled {
 }
 
 .figma-home-copy p {
-  margin: clamp(28px, 8.53vw, 36px) 0 0 12px;
+  position: absolute;
+  left: 11px;
+  top: 132px;
+  width: 224px;
+  margin: 0;
   color: #2b2424;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 500;
-  line-height: normal;
+  line-height: 25px;
+}
+
+@keyframes home-title-float {
+  0%,
+  100% {
+    transform: translateY(-2px) rotate(-0.7deg);
+  }
+
+  50% {
+    transform: translateY(2px) rotate(-0.7deg);
+  }
 }
 
 .figma-primary-button {
@@ -1805,7 +1821,7 @@ button:disabled {
 .figma-primary-button span {
   position: relative;
   z-index: 1;
-  font-family: "PingFang SC", "Alibaba PuHuiTi", sans-serif;
+  font-family: "Alibaba PuHuiTi", sans-serif;
   font-size: 20px;
   font-weight: 600;
   letter-spacing: 2px;
@@ -1830,7 +1846,7 @@ button:disabled {
 }
 
 .figma-home-cta {
-  top: 87.68%;
+  top: 73.4%;
 }
 
 .figma-quiz-count {
@@ -2086,6 +2102,17 @@ button:disabled {
   transform: translateX(-50%);
 }
 
+.figma-result-loading-logo {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 16.01%;
+  display: block;
+  width: 26.67%;
+  height: auto;
+  transform: translateX(-50%);
+}
+
 .figma-result-loading-copy small {
   display: block;
   margin-bottom: 24px;
@@ -2314,6 +2341,35 @@ button:disabled {
   pointer-events: none;
 }
 
+.figma-result-title-stack {
+  position: absolute;
+  z-index: 2;
+  left: 22.13%;
+  top: 12.56%;
+  width: 56%;
+  aspect-ratio: 210 / 136;
+  pointer-events: none;
+}
+
+.figma-result-title-stack img {
+  position: absolute;
+  display: block;
+  height: auto;
+  object-fit: contain;
+}
+
+.figma-result-title-white {
+  left: 0;
+  top: 0;
+  width: 99.52%;
+}
+
+.figma-result-title-foreground {
+  left: 0.48%;
+  top: 0.74%;
+  width: 99.52%;
+}
+
 .figma-dynamic-card {
   position: absolute;
   z-index: 3;
@@ -2352,7 +2408,7 @@ button:disabled {
   mask-composite: exclude;
 }
 
-.figma-dynamic-card span {
+.figma-dynamic-card > span {
   position: absolute;
   z-index: 2;
   left: 5.77%;
@@ -2386,7 +2442,7 @@ button:disabled {
   position: absolute;
   z-index: 1;
   left: 7.69%;
-  top: 52.35%;
+  top: 48.82%;
   width: 85%;
   margin: 0;
   font-size: 14px;
@@ -2394,11 +2450,21 @@ button:disabled {
   line-height: 19px;
 }
 
+.figma-result-description-line {
+  display: block;
+}
+
 .figma-lottery-back-hit {
   left: 5.33%;
   top: max(20px, env(safe-area-inset-top));
   width: 12.8%;
   aspect-ratio: 1;
+}
+
+.figma-lottery-back-hit img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .figma-result-save-hit {
@@ -2734,6 +2800,50 @@ button:disabled {
   transform: translateX(-50%);
 }
 
+.figma-prize-home-hit {
+  left: 15.73%;
+  top: 73.65%;
+  display: grid;
+  width: 72%;
+  height: 6.77%;
+  place-items: center;
+  overflow: visible;
+  color: #fffdfb;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+
+.figma-prize-home-hit::before,
+.figma-prize-home-hit::after {
+  position: absolute;
+  content: "";
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 10px);
+}
+
+.figma-prize-home-hit::before {
+  left: 12px;
+  right: 4px;
+  top: 6px;
+  bottom: 1px;
+  background: #2b2424;
+}
+
+.figma-prize-home-hit::after {
+  left: 4px;
+  right: 6px;
+  top: 3px;
+  bottom: 5px;
+  background: #c91422;
+  box-shadow: inset 0 0 0 1.5px #2b2424;
+}
+
+.figma-prize-home-hit span {
+  position: relative;
+  z-index: 1;
+}
+
 .figma-lead-card {
   position: absolute;
   left: 50%;
@@ -2784,7 +2894,7 @@ button:disabled {
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.5;
 }
 
@@ -2991,11 +3101,6 @@ button:disabled {
     padding: 28px 16px 64px;
   }
 
-  .figma-home-cta {
-    top: auto;
-    bottom: max(24px, calc(env(safe-area-inset-bottom) + 16px));
-  }
-
   .figma-lead-intro {
     gap: 5px;
     padding: 7px 8px;
@@ -3041,6 +3146,13 @@ button:disabled {
 
   .figma-lead-card .validation-message {
     bottom: 57px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figma-home-title-frame {
+    animation: none;
+    transform: rotate(-0.7deg);
   }
 }
 

@@ -51,7 +51,7 @@ const LOTTERY_PRIZE_TARGET_ROTATION: Record<LotteryPrize["prizeLevel"], number> 
 const LOTTERY_FAST_SPIN_MS = 2000;
 const LOTTERY_FAST_SPIN_ROUNDS = 6;
 const LOTTERY_SETTLE_MS = 650;
-const UPDATED_ASSET_VERSION = "20260715-1";
+const UPDATED_ASSET_VERSION = "20260716-1";
 const QUIZ_VISUAL_PATHS = [
   "/assets/figma/quiz-web/quiz-question-01.webp",
   "/assets/figma/quiz-web/quiz-question-02.webp",
@@ -102,7 +102,7 @@ function App() {
   const [toast, setToast] = useState("");
   const [resultError, setResultError] = useState(false);
   const [resultLoadingStep, setResultLoadingStep] = useState(0);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(audioEngine.isEnabled);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
   const [drawReminderOpen, setDrawReminderOpen] = useState(false);
@@ -114,6 +114,15 @@ function App() {
 
   useEffect(() => {
     audioEngine.preload();
+    const resumeAudio = () => {
+      void audioEngine.resumeFromGesture();
+    };
+    window.addEventListener("pointerdown", resumeAudio, { once: true });
+    document.addEventListener("WeixinJSBridgeReady", resumeAudio, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", resumeAudio);
+      document.removeEventListener("WeixinJSBridgeReady", resumeAudio);
+    };
   }, []);
 
   useEffect(() => {
@@ -219,7 +228,12 @@ function App() {
     const nextResult = await activityApi.submitQuiz(answerSet);
     const nextBackground = pickResultBackground(nextResult.productKey);
     const backgroundReady = preloadImage(nextBackground);
-    const titleReady = preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`);
+    const titleReady = Promise.all([
+      preloadImage(`/assets/figma/result-titles/${nextResult.productKey}.png?v=${UPDATED_ASSET_VERSION}`),
+      ...(nextResult.productKey === "level4"
+        ? [preloadImage(`/assets/figma/result-titles/level4-white.png?v=${UPDATED_ASSET_VERSION}`)]
+        : []),
+    ]);
 
     setResultLoadingStep(1);
     await wait(RESULT_LOADING_STEP_GAP_MS);
@@ -408,7 +422,6 @@ function App() {
               void downloadPoster();
               setScreen("lead");
             }}
-            saveLabel={weChatBrowser ? "长按保存海报后开始抽奖" : "点击保存并开始抽奖"}
           />
         )}
         {screen === "lead" && activeResult && (
@@ -753,6 +766,7 @@ function ResultLoadingScreen({ completedSteps, hasError, onBack, onRetry }: { co
       <button className="figma-back-button" type="button" onClick={onBack} aria-label="返回">
         <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
       </button>
+      <img className="figma-result-loading-logo" src={`/assets/figma/figma-tata-logo.png?v=${UPDATED_ASSET_VERSION}`} alt="TATA 木门" />
       <div className="figma-result-loading-copy">
         <small>ANALYZING</small>
         <h1>宅家人格<br /><strong>静化</strong>报告生成中</h1>
@@ -814,29 +828,19 @@ function pickResultBackground(productKey: QuizResult["productKey"]) {
   }
 }
 
-function formatResultDescription(result: QuizResult) {
-  const roman = RESULT_THEMES[result.productKey].roman;
-  return result.description
-    .replace("IV级", `${roman}级`)
-    .replace("III级", `${roman}级`)
-    .replace("II级", `${roman}级`)
-    .replace("I级", `${roman}级`);
-}
-
 function FigmaResultScreen({
   result,
   background,
   onBack,
   onSaveAndLead,
-  saveLabel,
 }: {
   result: QuizResult;
   background: string;
   onBack: () => void;
   onSaveAndLead: () => void | Promise<void>;
-  saveLabel: string;
 }) {
   const theme = RESULT_THEMES[result.productKey];
+  const descriptionLines = result.description.split("\n");
   return (
     <section className="screen figma-screen figma-static-screen figma-result-screen">
       <div
@@ -847,18 +851,41 @@ function FigmaResultScreen({
         <button className="figma-back-button figma-result-visible-back" type="button" onClick={onBack} aria-label="返回">
           <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </button>
-        <img
-          className="figma-result-title-art"
-          src={`/assets/figma/result-titles/${result.productKey}.png?v=${UPDATED_ASSET_VERSION}`}
-          alt={`${result.levelName} ${theme.roman}级静音 ${RESULT_LEVEL_VALUES[result.productKey]}`}
-        />
+        {result.productKey === "level4" ? (
+          <div
+            className="figma-result-title-stack"
+            role="img"
+            aria-label={`${result.levelName} ${theme.roman}级静音 ${RESULT_LEVEL_VALUES[result.productKey]}`}
+          >
+            <img
+              className="figma-result-title-white"
+              src={`/assets/figma/result-titles/level4-white.png?v=${UPDATED_ASSET_VERSION}`}
+              alt=""
+            />
+            <img
+              className="figma-result-title-foreground"
+              src={`/assets/figma/result-titles/level4.png?v=${UPDATED_ASSET_VERSION}`}
+              alt=""
+            />
+          </div>
+        ) : (
+          <img
+            className="figma-result-title-art"
+            src={`/assets/figma/result-titles/${result.productKey}.png?v=${UPDATED_ASSET_VERSION}`}
+            alt={`${result.levelName} ${theme.roman}级静音 ${RESULT_LEVEL_VALUES[result.productKey]}`}
+          />
+        )}
         <article className="figma-dynamic-card">
           <span>静音人格</span>
           <h1>{result.title}</h1>
-          <p>{formatResultDescription(result)}</p>
+          <p>
+            {descriptionLines.map((line) => (
+              <span className="figma-result-description-line" key={line}>{line}</span>
+            ))}
+          </p>
         </article>
         <button className="figma-hit-area figma-result-save-hit" type="button" onClick={() => void onSaveAndLead()}>
-          <span>{saveLabel}</span>
+          <span>点击保存</span>
         </button>
       </div>
     </section>
@@ -912,7 +939,9 @@ function LotteryScreen({
     <section className="screen figma-screen figma-static-screen figma-lottery-screen">
       <div className="figma-static-canvas">
         <img className="figma-static-art" src={`/assets/figma/figma-lottery-page.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
-        <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回" />
+        <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回">
+          <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
+        </button>
         <div className="figma-lottery-title">
           <h1>点击抽奖</h1>
           <strong>获取您的美好人居大奖</strong>
@@ -1084,6 +1113,9 @@ function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBac
           <strong style={{ fontSize: couponFontSize }}>{prize.couponCode}</strong>
         </div>
         <p className="figma-coupon-tip">截图保存您的代金券<br />可至全国门店签约后核销兑换<br />礼品以门店设置为准</p>
+        <button className="figma-hit-area figma-prize-home-hit" type="button" onClick={onBackHome}>
+          <span>返回首页</span>
+        </button>
       </div>
     </section>
   );

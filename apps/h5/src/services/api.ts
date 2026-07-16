@@ -2,7 +2,7 @@ import { ACTIVITY_CONFIG } from "@tata/shared-config";
 import type { LeadFormState, LotteryPrize, OptionKey, QuizResult, SessionState } from "../types";
 import { LotteryRuleError, mockApi } from "./mockApi";
 
-const DATA_SOURCE = (import.meta.env.VITE_H5_DATA_SOURCE || "mock").toLowerCase();
+const USE_REMOTE_API = import.meta.env.VITE_H5_DATA_SOURCE === "api";
 const API_BASE_URL = (import.meta.env.VITE_H5_API_BASE_URL || "").replace(/\/$/, "");
 const DEVICE_KEY = "tata-silent-fat-device-id";
 let activeSession: SessionState | null = null;
@@ -37,7 +37,7 @@ const remoteApi = {
   },
 };
 
-export const activityApi = DATA_SOURCE === "api" ? remoteApi : mockApi;
+export const activityApi = USE_REMOTE_API ? remoteApi : mockApi;
 export { LotteryRuleError };
 
 function sessionPath(action: string) {

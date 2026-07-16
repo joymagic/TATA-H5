@@ -4,7 +4,7 @@ import type { QuizResult } from "../types";
 
 const POSTER_LOGO = "/assets/figma/figma-tata-logo.png";
 const POSTER_TITLE = "/assets/figma/result-titles";
-const POSTER_ASSET_VERSION = "20260715-1";
+const POSTER_ASSET_VERSION = "20260716-1";
 
 const POSTER_META = {
   level1: {
@@ -62,10 +62,13 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
     document.fonts.load('600 16px "Alibaba PuHuiTi"'),
     document.fonts.load('700 36px "Alibaba PuHuiTi"'),
   ]);
-  const [logo, scene, levelTitle] = await Promise.all([
+  const [logo, scene, levelTitle, level4WhiteTitle] = await Promise.all([
     loadImage(POSTER_LOGO),
     loadImage(sceneUrl || `/assets/result-backgrounds-web/${result.productKey}/1.webp`),
     loadImage(`${POSTER_TITLE}/${result.productKey}.png?v=${POSTER_ASSET_VERSION}`),
+    result.productKey === "level4"
+      ? loadImage(`${POSTER_TITLE}/level4-white.png?v=${POSTER_ASSET_VERSION}`)
+      : Promise.resolve(null),
   ]);
 
   context.scale(2, 2);
@@ -74,7 +77,12 @@ export async function generatePoster(result: QuizResult, sceneUrl?: string) {
   context.drawImage(logo, 107, 22, 161, 33);
 
   coverImage(context, scene, 42, 68, 292, 553);
-  context.drawImage(levelTitle, 84, 101, 207, 134);
+  if (level4WhiteTitle) {
+    context.drawImage(level4WhiteTitle, 83, 101, 209, 119);
+    context.drawImage(levelTitle, 84, 102, 209, 134);
+  } else {
+    context.drawImage(levelTitle, 84, 101, 207, 134);
+  }
   drawResultCard(context, result, meta.accent);
   drawQrArea(context, meta.accent);
 
@@ -146,7 +154,11 @@ function drawResultCard(context: CanvasRenderingContext2D, result: QuizResult, a
   context.fillText(result.title, x + width / 2, 261);
 
   context.font = '500 14px "Alibaba PuHuiTi", sans-serif';
-  drawWrappedText(context, formatPosterDescription(result.description), x + 20, 325, 221, 19);
+  context.textAlign = "center";
+  context.textBaseline = "top";
+  result.description.split("\n").forEach((line, index) => {
+    context.fillText(line, x + width / 2, 319 + index * 19);
+  });
   context.restore();
 }
 
@@ -169,43 +181,6 @@ function drawCutCornerRect(
   context.lineTo(x, y + height - cornerY);
   context.lineTo(x, y + cornerY);
   context.closePath();
-}
-
-function drawWrappedText(
-  context: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-) {
-  const lines: string[] = [];
-  const cannotStartLine = /[，。！？、；：）】》]/;
-  let line = "";
-  for (const character of text) {
-    const candidate = line + character;
-    if (line && context.measureText(candidate).width > maxWidth) {
-      lines.push(cannotStartLine.test(character) ? candidate : line);
-      line = cannotStartLine.test(character) ? "" : character;
-    } else {
-      line = candidate;
-    }
-  }
-  if (line) lines.push(line);
-
-  context.textAlign = "center";
-  context.textBaseline = "top";
-  lines.slice(0, 3).forEach((value, index) => {
-    context.fillText(value, x + maxWidth / 2, y + index * lineHeight);
-  });
-}
-
-function formatPosterDescription(description: string) {
-  return description
-    .replace("IV级", "Ⅳ级")
-    .replace("III级", "Ⅲ级")
-    .replace("II级", "Ⅱ级")
-    .replace("I级", "Ⅰ级");
 }
 
 function drawQrArea(context: CanvasRenderingContext2D, borderColor: string) {

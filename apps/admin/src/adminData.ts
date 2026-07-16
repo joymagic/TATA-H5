@@ -113,6 +113,7 @@ export interface PrizeLevelConfig {
 }
 
 const MOCK_NOW = new Date("2026-07-28T22:00:00+08:00");
+const LOCAL_COUPONS = import.meta.env.VITE_ADMIN_DATA_SOURCE === "api" ? [] : COUPONS;
 
 export const CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都"] as const;
 export const CHANNELS = ["门店二维码", "品牌公众号", "微信朋友圈", "微信群", "小红书"] as const;
@@ -319,7 +320,7 @@ export function getIssuedCoupons(session: AdminSession, filters: UserFilters, so
 
 export function getCouponInventoryRows(session: AdminSession, disabledCodes: Set<string>): CouponRecord[] {
   if (session.role === "CITY_ADMIN") return [];
-  return COUPONS.slice(0, 80).map((coupon) =>
+  return LOCAL_COUPONS.slice(0, 80).map((coupon) =>
     disabledCodes.has(coupon.code) ? { ...coupon, status: "redeemed" } : coupon
   );
 }
@@ -437,7 +438,7 @@ function lead(
     level,
     score,
     prize,
-    couponCode: COUPONS[couponIndex]?.code ?? `TATA-DEMO-${couponIndex}`,
+    couponCode: LOCAL_COUPONS[couponIndex]?.code ?? `TATA-DEMO-${couponIndex}`,
     channel,
   };
 }
