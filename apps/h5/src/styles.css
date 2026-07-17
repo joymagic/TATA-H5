@@ -2271,6 +2271,7 @@ button:disabled {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .figma-static-art {
@@ -2374,7 +2375,7 @@ button:disabled {
   position: absolute;
   z-index: 3;
   left: 15.47%;
-  top: 30.3%;
+  top: max(30.3%, 65.6cqw);
   width: 69.33%;
   height: auto;
   aspect-ratio: 260 / 170;
