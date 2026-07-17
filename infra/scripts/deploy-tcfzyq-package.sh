@@ -135,6 +135,7 @@ certbot --nginx \
   --cert-name tcfzyq.online \
   -d tcfzyq.online \
   -d admin.tcfzyq.online
+systemctl enable --now certbot-renew.timer 2>/dev/null || true
 
 nginx -t
 systemctl reload nginx
