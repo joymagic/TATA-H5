@@ -19,7 +19,7 @@ install_dependencies() {
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl nginx certbot python3-certbot-nginx rsync
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y ca-certificates curl nginx certbot python3-certbot-nginx rsync
+    dnf --disableexcludes=all install -y ca-certificates curl nginx certbot python3-certbot-nginx rsync
   else
     printf 'Unsupported package manager. Install nginx, certbot, curl, and rsync first.\n' >&2
     exit 1
