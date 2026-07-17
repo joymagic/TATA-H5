@@ -19,7 +19,8 @@
     "test": "node tests/score.test.mjs && node tests/browser.test.mjs && pnpm --filter @tata/api test",
     "generate:coupons": "node scripts/generate-coupons.cjs",
     "prepare:assets": "NODE_PATH=/Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules /Users/welcometomagicworld/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node scripts/prepare-assets.cjs",
-    "package:tcfzyq": "bash infra/scripts/package-tcfzyq.sh"
+    "package:tcfzyq": "bash infra/scripts/package-tcfzyq.sh",
+    "package:production-tcfzyq": "bash infra/scripts/package-production-tcfzyq.sh"
   },
   "packageManager": "pnpm@11.7.0"
 }

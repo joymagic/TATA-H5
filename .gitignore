@@ -7,4 +7,5 @@ apps/*/dist/
 .env.*
 !.env.example
 *.log
+outputs/
 docs/design-reference/silent-festival-kv-style-reference.png

@@ -1,0 +1,24 @@
+[Unit]
+Description=TATA production API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/tata-h5/production/current
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8789
+EnvironmentFile=/etc/tata-production-api.env
+ExecStart=/usr/bin/node /srv/tata-h5/production/current/apps/api/src/server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/srv/tata-h5/production/data
+
+[Install]
+WantedBy=multi-user.target

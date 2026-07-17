@@ -113,34 +113,47 @@ function App() {
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   useEffect(() => {
-    let bridgeReady = false;
+    let audioPlaying = false;
     let bridgeRetryTimer: number | null = null;
     let bridgeRetryStopTimer: number | null = null;
-    const resumeAudio = () => {
+    const resumeAudio = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest("[data-audio-toggle]")) return;
       void audioEngine.resumeFromGesture();
     };
-    const resumeWeChatAudio = () => {
-      bridgeReady = audioEngine.resumeFromWeChatBridge() || bridgeReady;
-      if (bridgeReady && bridgeRetryTimer !== null) {
+    const resumeWeChatAudio = async () => {
+      audioPlaying = await audioEngine.resumeFromWeChatBridge();
+      if (audioPlaying && bridgeRetryTimer !== null) {
         window.clearInterval(bridgeRetryTimer);
         bridgeRetryTimer = null;
       }
     };
+    const resumeVisibleAudio = () => {
+      if (document.visibilityState === "visible") void resumeWeChatAudio();
+    };
+    const unsubscribePlayback = audioEngine.onPlaybackChange((playing) => {
+      audioPlaying = playing;
+      setAudioEnabled(playing);
+    });
     window.addEventListener("pointerdown", resumeAudio, { once: true });
-    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
+    document.addEventListener("touchstart", resumeAudio, { once: true, passive: true });
+    document.addEventListener("visibilitychange", resumeVisibleAudio);
+    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     audioEngine.preload();
-    resumeWeChatAudio();
-    if (isWeChatBrowser(window.navigator.userAgent) && !bridgeReady) {
-      bridgeRetryTimer = window.setInterval(resumeWeChatAudio, 400);
+    void resumeWeChatAudio();
+    if (isWeChatBrowser(window.navigator.userAgent) && !audioPlaying) {
+      bridgeRetryTimer = window.setInterval(() => void resumeWeChatAudio(), 800);
       bridgeRetryStopTimer = window.setTimeout(() => {
         if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
         bridgeRetryTimer = null;
-      }, 6000);
+      }, 20000);
     }
     return () => {
       if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
       if (bridgeRetryStopTimer !== null) window.clearTimeout(bridgeRetryStopTimer);
+      unsubscribePlayback();
       window.removeEventListener("pointerdown", resumeAudio);
+      document.removeEventListener("touchstart", resumeAudio);
+      document.removeEventListener("visibilitychange", resumeVisibleAudio);
       document.removeEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     };
   }, []);
@@ -465,7 +478,9 @@ function App() {
             onDraw={drawLottery}
           />
         )}
-        {screen === "lotteryResult" && prize && <LotteryResultScreen prize={prize} onBackHome={backHome} />}
+        {screen === "lotteryResult" && prize && (
+          <LotteryResultScreen prize={prize} onBackHome={backHome} onRules={() => setRulesOpen(true)} />
+        )}
         {rulesOpen && <ActivityRulesModal onClose={() => setRulesOpen(false)} />}
         {legalDocument && (
           <LegalDocumentModal documentKey={legalDocument} onClose={() => setLegalDocument(null)} />
@@ -579,6 +594,7 @@ function HomeScreen({
       <div className="figma-home-actions">
         <button
           type="button"
+          data-audio-toggle
           onClick={onAudioToggle}
           aria-label={audioEnabled ? "关闭背景音乐" : "开启背景音乐"}
           aria-pressed={audioEnabled}
@@ -1115,7 +1131,15 @@ function LeadScreen({
   );
 }
 
-function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBackHome: () => void }) {
+function LotteryResultScreen({
+  prize,
+  onBackHome,
+  onRules,
+}: {
+  prize: LotteryPrize;
+  onBackHome: () => void;
+  onRules: () => void;
+}) {
   const couponFontSize = prize.couponCode.length > 18 ? "20px" : "34px";
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-result-screen">
@@ -1132,10 +1156,20 @@ function LotteryResultScreen({ prize, onBackHome }: { prize: LotteryPrize; onBac
           <span>奖品兑换码</span>
           <strong style={{ fontSize: couponFontSize }}>{prize.couponCode}</strong>
         </div>
-        <p className="figma-coupon-tip">截图保存您的代金券<br />可至全国门店签约后核销兑换<br />礼品以门店设置为准</p>
+        <p className="figma-coupon-tip">
+          请截图保存您的代金券<br />
+          2026年7月23日-2026年8月31日期间<br />
+          可至全国门店签约后核销兑换<br />
+          礼品以门店设置为准
+        </p>
         <button className="figma-hit-area figma-prize-home-hit" type="button" onClick={onBackHome}>
           <span>返回首页</span>
         </button>
+        <p className="figma-redemption-tip">
+          兑奖提示：兑奖周期为2026年7月23日-2026年8月31日，<br />
+          详细请查看
+          <button type="button" onClick={onRules}>活动规则</button>。
+        </p>
       </div>
     </section>
   );

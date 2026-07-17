@@ -2790,7 +2790,7 @@ button:disabled {
   z-index: 3;
   left: 50%;
   top: 62.56%;
-  width: 47.73%;
+  width: 76%;
   margin: 0;
   color: #2b2424;
   font-size: 14px;
@@ -2798,6 +2798,35 @@ button:disabled {
   line-height: 1.42;
   text-align: center;
   transform: translateX(-50%);
+}
+
+.figma-redemption-tip {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 90.1%;
+  width: 86%;
+  margin: 0;
+  color: #2b2424;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.figma-redemption-tip button {
+  display: inline;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .figma-prize-home-hit {

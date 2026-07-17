@@ -6,7 +6,7 @@ import {
 } from "@tata/shared-config/coupons";
 import { ACTIVITY_CONFIG } from "@tata/shared-config";
 
-export type AdminRole = "HEADQUARTERS_ADMIN" | "CITY_ADMIN";
+export type AdminRole = "HEADQUARTERS_ADMIN" | "PROVINCE_ADMIN";
 export type AdminView = "dashboard" | "users";
 export type DataSource = "mock" | "api";
 export type RuntimeEnv = "development" | "fat" | "testing" | "production";
@@ -21,7 +21,7 @@ export interface AdminSession {
   username: string;
   displayName: string;
   role: AdminRole;
-  city: string;
+  province: string;
   lastLoginAt: string;
 }
 
@@ -32,7 +32,6 @@ export interface DemoAccount extends AdminSession {
 export interface DashboardFilters {
   dateRange: DateRange;
   city: CityFilter;
-  channel: "all" | string;
   personality: PersonalityFilter;
 }
 
@@ -49,6 +48,7 @@ export interface LeadRecord {
   submittedAt: string;
   name: string;
   phone: string;
+  province: string;
   city: string;
   personality: Personality;
   level: string;
@@ -56,7 +56,6 @@ export interface LeadRecord {
   prize: string;
   couponCode: string;
   couponIssuedAt?: string;
-  channel: string;
 }
 
 export interface MetricValue {
@@ -74,7 +73,6 @@ export interface DashboardData {
   metrics: MetricValue[];
   personality: DistributionValue[];
   funnel: DistributionValue[];
-  channel: DistributionValue[];
   city: DistributionValue[];
 }
 
@@ -116,7 +114,6 @@ const MOCK_NOW = new Date("2026-07-28T22:00:00+08:00");
 const LOCAL_COUPONS = import.meta.env.VITE_ADMIN_DATA_SOURCE === "api" ? [] : COUPONS;
 
 export const CITIES = ["北京", "上海", "广州", "深圳", "杭州", "成都"] as const;
-export const CHANNELS = ["门店二维码", "品牌公众号", "微信朋友圈", "微信群", "小红书"] as const;
 export const PERSONALITIES: Personality[] = ["悦己淡人", "沉浸领主", "安睡主宰", "头号玩家"];
 export const PRIZE_LEVEL_CONFIGS = recalculatePrizeProbabilities(ACTIVITY_CONFIG.lottery.prizeLevels);
 export const PRIZES = PRIZE_LEVEL_CONFIGS.map((prize) => prize.name);
@@ -136,16 +133,16 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     password: "TATA2026",
     displayName: "总部管理员",
     role: "HEADQUARTERS_ADMIN",
-    city: "全国",
+    province: "全国",
     lastLoginAt: "2026-07-28 09:18",
   },
   {
     id: "admin-sh-demo",
     username: "sh_admin",
     password: "TATA2026",
-    displayName: "上海城市管理员",
-    role: "CITY_ADMIN",
-    city: "上海",
+    displayName: "上海管理员",
+    role: "PROVINCE_ADMIN",
+    province: "上海",
     lastLoginAt: "2026-07-28 09:35",
   },
 ];
@@ -153,7 +150,6 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
 export const INITIAL_DASHBOARD_FILTERS: DashboardFilters = {
   dateRange: "last7",
   city: "all",
-  channel: "all",
   personality: "all",
 };
 
@@ -204,6 +200,7 @@ export function getRuntimeConfig(): RuntimeConfig {
   const isTestingPreview = env === "testing" && useMockData;
   const isFatPreview = env === "fat" && useMockData;
   const isFatApi = env === "fat" && !useMockData;
+  const isProductionApi = env === "production" && !useMockData;
   const isProductionPreview = env === "production" && useMockData;
 
   return {
@@ -212,7 +209,9 @@ export function getRuntimeConfig(): RuntimeConfig {
     dataSource,
     useMockData,
     apiBaseUrl,
-    datasetLabel: isFatApi
+    datasetLabel: isProductionApi
+      ? "正式环境实时数据"
+      : isFatApi
       ? "FAT 1.0 实时测试数据"
       : isFatPreview
       ? "FAT 1.0 测试数据"
@@ -222,8 +221,10 @@ export function getRuntimeConfig(): RuntimeConfig {
       ? "真实环境预览数据"
       : useMockData
       ? "开发演示数据"
-      : "测试环境 API",
-    datasetNotice: isFatApi
+      : "后台 API",
+    datasetNotice: isProductionApi
+      ? "当前 H5 与 Admin 共用独立正式 API 和正式数据库，数据实时同步。"
+      : isFatApi
       ? "当前 H5 与 Admin 共用独立 FAT API 和测试数据库，数据实时同步。"
       : isFatPreview
       ? "当前为 FAT 1.0 测试环境 Admin，使用独立 mock 数据验收。"
@@ -244,8 +245,7 @@ export function loginWithMockAccount(username: string, password: string): AdminS
   return session;
 }
 
-export function withRoleDefaults(session: AdminSession, filters: DashboardFilters): DashboardFilters {
-  if (session.role === "CITY_ADMIN") return { ...filters, city: session.city };
+export function withRoleDefaults(_session: AdminSession, filters: DashboardFilters): DashboardFilters {
   return filters;
 }
 
@@ -256,10 +256,9 @@ export function getScopedLeads(
 ): LeadRecord[] {
   const referenceNow = sourceLeads === MOCK_LEADS ? MOCK_NOW : new Date();
   return sourceLeads.filter((leadItem) => {
-    if (session.role === "CITY_ADMIN" && leadItem.city !== session.city) return false;
+    if (session.role === "PROVINCE_ADMIN" && leadItem.province !== session.province) return false;
     if ("city" in filters && filters.city !== "all" && leadItem.city !== filters.city) return false;
     if ("personality" in filters && filters.personality !== "all" && leadItem.personality !== filters.personality) return false;
-    if ("channel" in filters && filters.channel !== "all" && leadItem.channel !== filters.channel) return false;
     if ("prize" in filters && filters.prize !== "all" && leadItem.prize !== filters.prize) return false;
     if (!isWithinDateRange(leadItem.submittedAt, filters.dateRange, referenceNow)) return false;
     if ("keyword" in filters) {
@@ -302,7 +301,6 @@ export function getDashboardData(session: AdminSession, filters: DashboardFilter
       { label: "客资", value: leadCount },
       { label: "抽奖", value: lotteryUsers },
     ],
-    channel: countBy(scopedLeads, (item) => item.channel, [...CHANNELS]),
     city: countBy(scopedLeads, (item) => item.city),
   };
 }
@@ -319,7 +317,7 @@ export function getIssuedCoupons(session: AdminSession, filters: UserFilters, so
 }
 
 export function getCouponInventoryRows(session: AdminSession, disabledCodes: Set<string>): CouponRecord[] {
-  if (session.role === "CITY_ADMIN") return [];
+  if (session.role === "PROVINCE_ADMIN") return [];
   return LOCAL_COUPONS.slice(0, 80).map((coupon) =>
     disabledCodes.has(coupon.code) ? { ...coupon, status: "redeemed" } : coupon
   );
@@ -356,22 +354,22 @@ export function prizeNameForCouponAmount(amount: number) {
 }
 
 export function roleLabel(role: AdminRole) {
-  return role === "HEADQUARTERS_ADMIN" ? "总部 ADMIN" : "城市 ADMIN";
+  return role === "HEADQUARTERS_ADMIN" ? "总部 ADMIN" : "省份 ADMIN";
 }
 
 export function createLeadCsv(rows: LeadRecord[], includeRawPhone: boolean) {
   return toCsv(
-    ["提交时间", "姓名", "手机号", "城市", "人格", "测试得分", "奖项", "奖券码", "渠道"],
+    ["提交时间", "姓名", "手机号", "省份", "城市", "人格", "测试得分", "奖项", "奖券码"],
     rows.map((row) => [
       row.submittedAt,
       row.name,
       includeRawPhone ? row.phone : maskPhone(row.phone),
+      row.province,
       row.city,
       row.personality,
       String(row.score),
       row.prize,
       row.couponCode,
-      row.channel,
     ])
   );
 }
@@ -426,21 +424,25 @@ function lead(
   score: number,
   prize: string,
   couponIndex: number,
-  channel: string
+  _channel: string
 ): LeadRecord {
   return {
     id,
     submittedAt,
     name,
     phone,
+    province: provinceForMockCity(city),
     city,
     personality,
     level,
     score,
     prize,
     couponCode: LOCAL_COUPONS[couponIndex]?.code ?? `TATA-DEMO-${couponIndex}`,
-    channel,
   };
+}
+
+function provinceForMockCity(city: string) {
+  return ({ 北京: "北京", 上海: "上海", 广州: "广东", 深圳: "广东", 杭州: "浙江", 成都: "四川" } as Record<string, string>)[city] ?? "";
 }
 
 function normalizeRuntimeEnv(value: string): RuntimeEnv {

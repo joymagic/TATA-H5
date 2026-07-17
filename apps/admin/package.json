@@ -9,7 +9,7 @@
     "build:fat": "tsc --noEmit && VITE_ADMIN_ENV=fat VITE_ADMIN_DATA_SOURCE=api VITE_ADMIN_API_BASE_URL= vite build --mode fat --outDir dist/fat",
     "build:tcfzyq": "tsc --noEmit && VITE_ADMIN_ENV=fat VITE_ADMIN_DATA_SOURCE=api VITE_ADMIN_API_BASE_URL= vite build --mode fat --outDir dist/tcfzyq",
     "build:testing": "tsc --noEmit && VITE_ADMIN_ENV=testing VITE_ADMIN_DATA_SOURCE=mock vite build --mode testing --outDir dist/testing",
-    "build:production": "tsc --noEmit && VITE_ADMIN_ENV=production VITE_ADMIN_DATA_SOURCE=mock vite build --mode production --outDir dist/production",
+    "build:production": "tsc --noEmit && VITE_ADMIN_ENV=production VITE_ADMIN_DATA_SOURCE=api VITE_ADMIN_API_BASE_URL= vite build --mode production --outDir dist/production",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --host 127.0.0.1 --port 4174"
   },

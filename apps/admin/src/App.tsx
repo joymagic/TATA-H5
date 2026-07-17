@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
-  CHANNELS,
   COUPON_BATCH,
   COUPON_EXPORT_PATH,
   DEMO_ACCOUNTS,
@@ -79,7 +78,6 @@ const EMPTY_DASHBOARD: DashboardData = {
   ],
   personality: PERSONALITIES.map((label) => ({ label, value: 0 })),
   funnel: [],
-  channel: [...CHANNELS].map((label) => ({ label, value: 0 })),
   city: [],
 };
 
@@ -182,7 +180,7 @@ export function App() {
   const activeSession = session;
   const scopedDashboardFilters = withRoleDefaults(activeSession, dashboardFilters);
   const dashboardData = RUNTIME.useMockData ? getDashboardData(activeSession, scopedDashboardFilters) : apiDashboard;
-  const scopedUserFilters = activeSession.role === "CITY_ADMIN" ? { ...userFilters, city: activeSession.city } : userFilters;
+  const scopedUserFilters = userFilters;
   const users = getScopedLeads(activeSession, scopedUserFilters, RUNTIME.useMockData ? undefined : apiLeads);
   const issuedCoupons = getIssuedCoupons(activeSession, scopedUserFilters, RUNTIME.useMockData ? undefined : apiLeads);
   const pageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
@@ -190,12 +188,12 @@ export function App() {
   const availableCities = getAvailableCities(RUNTIME.useMockData ? undefined : apiLeads);
 
   function resetDashboardFilters() {
-    setDashboardFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_DASHBOARD_FILTERS, city: activeSession.city } : INITIAL_DASHBOARD_FILTERS);
+    setDashboardFilters(INITIAL_DASHBOARD_FILTERS);
     pushLog("筛选重置", "数据看板筛选已重置");
   }
 
   function resetUserFilters() {
-    setUserFilters(activeSession.role === "CITY_ADMIN" ? { ...INITIAL_USER_FILTERS, city: activeSession.city } : INITIAL_USER_FILTERS);
+    setUserFilters(INITIAL_USER_FILTERS);
     setPage(1);
     pushLog("筛选重置", "用户数据筛选已重置");
   }
@@ -211,7 +209,7 @@ export function App() {
 
   function savePrizeConfigs() {
     if (activeSession.role !== "HEADQUARTERS_ADMIN") {
-      pushLog("权限拦截", "城市 ADMIN 无权调整奖项配置");
+      pushLog("权限拦截", "省份 ADMIN 无权调整奖项配置");
       return;
     }
     window.localStorage.setItem(PRIZE_CONFIG_STORAGE_KEY, JSON.stringify(prizeConfigs));
@@ -220,7 +218,7 @@ export function App() {
 
   function resetPrizeConfigs() {
     if (activeSession.role !== "HEADQUARTERS_ADMIN") {
-      pushLog("权限拦截", "城市 ADMIN 无权调整奖项配置");
+      pushLog("权限拦截", "省份 ADMIN 无权调整奖项配置");
       return;
     }
     setPrizeConfigs(PRIZE_LEVEL_CONFIGS);
@@ -234,7 +232,7 @@ export function App() {
       ...dashboardData.metrics.map((item) => [item.label, String(item.value), item.hint]),
     ];
     downloadCsv("tata-admin-dashboard.csv", rows.map((row) => row.join(",")).join("\n"));
-    pushLog("导出活动看板", `已导出 ${activeSession.role === "CITY_ADMIN" ? activeSession.city : "全部城市"} 活动看板`);
+    pushLog("导出活动看板", `已导出 ${activeSession.role === "PROVINCE_ADMIN" ? activeSession.province : "全国"} 活动看板`);
   }
 
   function exportUsers() {
@@ -249,15 +247,15 @@ export function App() {
 
   function simulateCouponAction(action: string) {
     if (activeSession.role !== "HEADQUARTERS_ADMIN") {
-      pushLog("权限拦截", "城市 ADMIN 无权操作券码池");
+      pushLog("权限拦截", "省份 ADMIN 无权操作券码池");
       return;
     }
-    pushLog(action, `${action}已记录为开发演示操作，测试环境需调用 Admin API`);
+    pushLog(action, `${action}已记录，券码池变更请通过后端管理接口完成`);
   }
 
   function disableCoupon(code: string) {
     if (activeSession.role !== "HEADQUARTERS_ADMIN") {
-      pushLog("权限拦截", "城市 ADMIN 无权停用券码");
+      pushLog("权限拦截", "省份 ADMIN 无权停用券码");
       return;
     }
     setDisabledCodes((codes) => new Set(codes).add(code));
@@ -288,7 +286,7 @@ export function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">TATA 静音人格测试</p>
-            <h1>{view === "dashboard" ? "数据看板" : activeSession.role === "CITY_ADMIN" ? "用户信息" : "用户数据及奖项管理"}</h1>
+            <h1>{view === "dashboard" ? "数据看板" : activeSession.role === "PROVINCE_ADMIN" ? "用户信息" : "用户数据及奖项管理"}</h1>
           </div>
           <div className="account-area">
             <span className="env-badge">{RUNTIME.badge}</span>
@@ -296,7 +294,7 @@ export function App() {
               <ShieldCheck size={18} />
               <div>
                 <strong>{activeSession.displayName}</strong>
-                <span>{roleLabel(activeSession.role)} · {activeSession.city}</span>
+                <span>{roleLabel(activeSession.role)} · {activeSession.province}</span>
               </div>
             </div>
             <button className="ghost-button" type="button" onClick={handleLogout}>
@@ -313,12 +311,11 @@ export function App() {
             cities={availableCities}
             data={dashboardData}
             filters={scopedDashboardFilters}
-            role={activeSession.role}
             onExport={exportDashboard}
             onFiltersChange={(filters) => setDashboardFilters(withRoleDefaults(activeSession, filters))}
             onQuery={() => {
               setApiRefreshKey((value) => value + 1);
-              pushLog("查询活动看板", "已刷新 FAT 测试数据库");
+              pushLog("查询活动看板", "已刷新后台数据库");
             }}
             onReset={resetDashboardFilters}
           />
@@ -342,13 +339,13 @@ export function App() {
             onExportCoupons={exportIssuedCoupons}
             onExportUsers={exportUsers}
             onFiltersChange={(filters) => {
-              setUserFilters(activeSession.role === "CITY_ADMIN" ? { ...filters, city: activeSession.city } : filters);
+              setUserFilters(filters);
               setPage(1);
             }}
             onPageChange={setPage}
             onQuery={() => {
               setApiRefreshKey((value) => value + 1);
-              pushLog("查询用户数据", "已刷新 FAT 测试数据库");
+              pushLog("查询用户数据", "已刷新后台数据库");
             }}
             onReset={resetUserFilters}
             onResetPrizeConfigs={resetPrizeConfigs}
@@ -462,7 +459,7 @@ function LoginScreen({ runtime, onLogin }: { runtime: RuntimeConfig; onLogin: (s
         ) : (
           <div className="api-login-note">
             <CheckCircle2 size={17} />
-            FAT Admin 已连接独立测试 API，演示账号仅用于本次联调。
+            {runtime.env === "production" ? "正式 Admin 已连接独立正式 API。" : "FAT Admin 已连接独立测试 API。"}
           </div>
         )}
       </section>
@@ -482,11 +479,12 @@ function RuntimeCard({ runtime }: { runtime: RuntimeConfig }) {
 }
 
 function ApiNotice({ runtime, status }: { runtime: RuntimeConfig; status: "idle" | "loading" | "ready" | "error" }) {
+  const environmentName = runtime.env === "production" ? "正式" : "FAT 测试";
   return (
     <section className="api-notice">
       {status === "error" ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
       <div>
-        <strong>{status === "loading" ? "正在读取 FAT 测试数据库" : status === "error" ? "FAT API 暂时不可用" : "FAT API 与测试数据库已连接"}</strong>
+        <strong>{status === "loading" ? `正在读取${environmentName}数据库` : status === "error" ? `${environmentName} API 暂时不可用` : `${environmentName} API 与数据库已连接`}</strong>
         <p>当前 API：{runtime.apiBaseUrl || "同源 /api"}，H5 新提交将在刷新后显示。</p>
       </div>
     </section>
@@ -497,7 +495,6 @@ function DashboardPanel({
   cities,
   data,
   filters,
-  role,
   onExport,
   onFiltersChange,
   onQuery,
@@ -506,7 +503,6 @@ function DashboardPanel({
   cities: string[];
   data: DashboardData;
   filters: DashboardFilters;
-  role: AdminRole;
   onExport: () => void;
   onFiltersChange: (filters: DashboardFilters) => void;
   onQuery: () => void;
@@ -521,16 +517,10 @@ function DashboardPanel({
           <option value="last30">近 30 天</option>
           <option value="all">全部</option>
         </FilterSelect>
-        <FilterSelect label="城市" value={filters.city} disabled={role === "CITY_ADMIN"} onChange={(city) => onFiltersChange({ ...filters, city })}>
+        <FilterSelect label="城市" value={filters.city} onChange={(city) => onFiltersChange({ ...filters, city })}>
           <option value="all">全部城市</option>
           {cities.map((city) => (
             <option value={city} key={city}>{city}</option>
-          ))}
-        </FilterSelect>
-        <FilterSelect label="渠道" value={filters.channel} onChange={(channel) => onFiltersChange({ ...filters, channel })}>
-          <option value="all">全部渠道</option>
-          {CHANNELS.map((channel) => (
-            <option value={channel} key={channel}>{channel}</option>
           ))}
         </FilterSelect>
         <FilterSelect label="人格" value={filters.personality} onChange={(personality) => onFiltersChange({ ...filters, personality: personality as DashboardFilters["personality"] })}>
@@ -567,9 +557,6 @@ function DashboardPanel({
         </ChartPanel>
         <ChartPanel title="转化漏斗" icon={<Filter size={18} />}>
           <FunnelChart data={data.funnel} />
-        </ChartPanel>
-        <ChartPanel title="渠道来源" icon={<Database size={18} />}>
-          <BarList data={data.channel} />
         </ChartPanel>
         <ChartPanel title="城市分布" icon={<Building2 size={18} />}>
           <BarList data={data.city} />
@@ -722,7 +709,7 @@ function UsersPanel({
             <input value={filters.keyword} onChange={(event) => onFiltersChange({ ...filters, keyword: event.target.value })} placeholder="搜索姓名或手机号" />
           </div>
         </label>
-        <FilterSelect label="城市" value={filters.city} disabled={role === "CITY_ADMIN"} onChange={(city) => onFiltersChange({ ...filters, city })}>
+        <FilterSelect label="城市" value={filters.city} onChange={(city) => onFiltersChange({ ...filters, city })}>
           <option value="all">全部城市</option>
           {cities.map((city) => (
             <option value={city} key={city}>{city}</option>
@@ -771,12 +758,12 @@ function UsersPanel({
                 <th>提交时间</th>
                 <th>姓名</th>
                 <th>手机号</th>
+                <th>省份</th>
                 <th>城市</th>
                 <th>人格</th>
                 <th>测试得分</th>
                 <th>奖项</th>
                 <th>奖券码</th>
-                <th>渠道</th>
               </tr>
             </thead>
             <tbody>
@@ -786,16 +773,16 @@ function UsersPanel({
                     <td>{user.submittedAt}</td>
                     <td>{user.name}</td>
                     <td>{maskPhone(user.phone)}</td>
+                    <td>{user.province}</td>
                     <td>{user.city}</td>
                     <td><span className="persona-pill">{user.personality}</span></td>
                     <td>{user.score}</td>
                     <td>{user.prize}</td>
                     <td className="code-cell">{user.couponCode}</td>
-                    <td>{user.channel}</td>
                   </tr>
                 ))
               ) : (
-                <EmptyTable colSpan={9} text={runtime.useMockData ? "暂无匹配用户" : "等待测试环境 API 返回用户数据"} />
+                <EmptyTable colSpan={9} text={runtime.useMockData ? "暂无匹配用户" : "暂无用户数据"} />
               )}
             </tbody>
           </table>
@@ -828,8 +815,8 @@ function UsersPanel({
           </div>
 
           <div className="download-row">
-            <span>完整开发券码池 CSV：</span>
-            <a className="text-link" href={COUPON_EXPORT_PATH} download>下载本地开发券码池</a>
+            <span>完整券码池 CSV：</span>
+            <a className="text-link" href={COUPON_EXPORT_PATH} download>下载券码池</a>
           </div>
           <div className="table-wrap">
             <table>
@@ -918,7 +905,7 @@ function BarList({ data }: { data: DistributionValue[] }) {
 
 function FunnelChart({ data }: { data: DistributionValue[] }) {
   const maxValue = Math.max(1, ...data.map((item) => item.value));
-  if (!data.length) return <EmptyState text="等待测试环境 API 返回漏斗数据" />;
+  if (!data.length) return <EmptyState text="暂无漏斗数据" />;
   return (
     <div className="funnel-list">
       {data.map((item) => (
@@ -1024,13 +1011,13 @@ function toApiSession(payload: unknown): AdminSession {
     cityName?: string;
     name?: string;
   };
-  const role = data.role === "CITY_ADMIN" ? "CITY_ADMIN" : "HEADQUARTERS_ADMIN";
+  const role = data.role === "PROVINCE_ADMIN" ? "PROVINCE_ADMIN" : "HEADQUARTERS_ADMIN";
   return {
     id: String(data.id ?? "api-admin"),
     username: String(data.username ?? "api_admin"),
     displayName: String(data.displayName ?? data.name ?? "管理员"),
     role,
-    city: String(data.city ?? data.cityName ?? (role === "CITY_ADMIN" ? "所属城市" : "全国")),
+    province: String(data.province ?? data.cityName ?? (role === "PROVINCE_ADMIN" ? "所属省份" : "全国")),
     lastLoginAt: String(data.lastLoginAt ?? ""),
   };
 }

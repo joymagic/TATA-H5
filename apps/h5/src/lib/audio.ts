@@ -14,37 +14,39 @@ class AudioEngine {
   private context: AudioContext | null = null;
   private music: HTMLAudioElement | null = null;
   private enabled = true;
+  private playbackListeners = new Set<(playing: boolean) => void>();
   private loopNodes: { oscillator: OscillatorNode; gain: GainNode }[] = [];
   private ambientMaster: GainNode | null = null;
   private ambientTimer: number | null = null;
   private ambientGeneration = 0;
 
   get isEnabled() {
-    return this.enabled;
+    return this.isMusicPlaying();
   }
 
   preload() {
     const music = this.ensureMusic();
     music.load();
-    void music.play().catch(() => undefined);
+    void this.resumeMusic();
+  }
+
+  onPlaybackChange(listener: (playing: boolean) => void) {
+    this.playbackListeners.add(listener);
+    listener(this.isMusicPlaying());
+    return () => this.playbackListeners.delete(listener);
   }
 
   async toggle() {
-    if (this.enabled) {
-      this.music?.pause();
-      this.stopAmbient();
-      this.enabled = false;
-      return false;
-    }
-    this.ensureContext();
     const music = this.ensureMusic();
-    try {
-      await music.play();
-    } catch {
+    if (this.isMusicPlaying()) {
+      this.enabled = false;
+      music.pause();
+      this.stopAmbient();
       return false;
     }
     this.enabled = true;
-    return true;
+    this.ensureContext();
+    return this.resumeMusic();
   }
 
   async resumeFromGesture() {
@@ -53,18 +55,27 @@ class AudioEngine {
     await this.resumeMusic();
   }
 
-  resumeFromWeChatBridge() {
+  async resumeFromWeChatBridge() {
     const bridge = window.WeixinJSBridge;
     if (!this.enabled || typeof bridge?.invoke !== "function") return false;
-    try {
-      bridge.invoke("getNetworkType", {}, () => {
-        void this.resumeMusic();
-      });
-      return true;
-    } catch {
-      void this.resumeMusic();
-      return false;
-    }
+    return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const finish = (playing: boolean) => {
+        if (resolved) return;
+        resolved = true;
+        resolve(playing);
+      };
+      try {
+        bridge.invoke("getNetworkType", {}, () => {
+          void this.resumeMusic().then(finish);
+        });
+      } catch {
+        void this.resumeMusic().then(finish);
+      }
+      window.setTimeout(() => {
+        finish(this.isMusicPlaying());
+      }, 1800);
+    });
   }
 
   play(name: SoundName) {
@@ -100,6 +111,29 @@ class AudioEngine {
     }
   }
 
+  private notifyPlaybackChange() {
+    const playing = this.isMusicPlaying();
+    this.playbackListeners.forEach((listener) => listener(playing));
+  }
+
+  private isMusicPlaying() {
+    return Boolean(this.music && !this.music.paused && !this.music.ended);
+  }
+
+  private bindMusicEvents(music: HTMLAudioElement) {
+    (["play", "playing", "pause", "ended"] as const).forEach((eventName) => {
+      music.addEventListener(eventName, () => this.notifyPlaybackChange());
+    });
+    music.addEventListener("canplay", () => {
+      if (!this.enabled || this.isMusicPlaying()) return;
+      if (window.WeixinJSBridge) {
+        void this.resumeFromWeChatBridge();
+      } else {
+        void this.resumeMusic();
+      }
+    }, { once: true });
+  }
+
   private ensureMusic() {
     if (this.music) return this.music;
     const music = new Audio(MUSIC_URL);
@@ -108,13 +142,23 @@ class AudioEngine {
     music.volume = 0.32;
     music.setAttribute("playsinline", "true");
     music.setAttribute("webkit-playsinline", "true");
+    this.bindMusicEvents(music);
     this.music = music;
     return music;
   }
 
   private async resumeMusic() {
+    if (!this.enabled) return false;
     const music = this.ensureMusic();
-    await music.play().catch(() => undefined);
+    try {
+      await music.play();
+    } catch {
+      this.notifyPlaybackChange();
+      return false;
+    }
+    const playing = this.isMusicPlaying();
+    this.notifyPlaybackChange();
+    return playing;
   }
 
   private frequency(name: SoundName) {
@@ -138,7 +182,6 @@ class AudioEngine {
       win: 0.72,
     }[name];
   }
-
   private startAmbient() {
     if (!this.context || this.ambientMaster) return;
     const now = this.context.currentTime;
