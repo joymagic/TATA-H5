@@ -81,7 +81,13 @@ ln -sfn "${RELEASE_DIR}" "${TARGET_ROOT}/current"
 install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-static-security.conf" /etc/nginx/snippets/tata-static-security.conf
 install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-tcfzyq-routes.conf" /etc/nginx/snippets/tata-tcfzyq-routes.conf
 install -m 0644 "${PACKAGE_ROOT}/deploy/nginx/tata-tcfzyq.conf" /etc/nginx/sites-available/tata-tcfzyq.conf
-ln -sfn /etc/nginx/sites-available/tata-tcfzyq.conf /etc/nginx/sites-enabled/tata-tcfzyq.conf
+if grep -q 'sites-enabled' /etc/nginx/nginx.conf; then
+  rm -f /etc/nginx/conf.d/tata-tcfzyq.conf
+  ln -sfn /etc/nginx/sites-available/tata-tcfzyq.conf /etc/nginx/sites-enabled/tata-tcfzyq.conf
+else
+  rm -f /etc/nginx/sites-enabled/tata-tcfzyq.conf
+  ln -sfn /etc/nginx/sites-available/tata-tcfzyq.conf /etc/nginx/conf.d/tata-tcfzyq.conf
+fi
 
 if [[ ! -f /etc/tata-tcfzyq-api.env ]]; then
   printf '%s\n' 'FAT_ADMIN_PASSWORD=TATA2026' > /etc/tata-tcfzyq-api.env
