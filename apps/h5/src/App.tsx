@@ -113,17 +113,33 @@ function App() {
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   useEffect(() => {
+    let bridgeReady = false;
+    let bridgeRetryTimer: number | null = null;
+    let bridgeRetryStopTimer: number | null = null;
     const resumeAudio = () => {
       void audioEngine.resumeFromGesture();
     };
     const resumeWeChatAudio = () => {
-      audioEngine.resumeFromWeChatBridge();
+      bridgeReady = audioEngine.resumeFromWeChatBridge() || bridgeReady;
+      if (bridgeReady && bridgeRetryTimer !== null) {
+        window.clearInterval(bridgeRetryTimer);
+        bridgeRetryTimer = null;
+      }
     };
     window.addEventListener("pointerdown", resumeAudio, { once: true });
     document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
     audioEngine.preload();
     resumeWeChatAudio();
+    if (isWeChatBrowser(window.navigator.userAgent) && !bridgeReady) {
+      bridgeRetryTimer = window.setInterval(resumeWeChatAudio, 400);
+      bridgeRetryStopTimer = window.setTimeout(() => {
+        if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
+        bridgeRetryTimer = null;
+      }, 6000);
+    }
     return () => {
+      if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
+      if (bridgeRetryStopTimer !== null) window.clearTimeout(bridgeRetryStopTimer);
       window.removeEventListener("pointerdown", resumeAudio);
       document.removeEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     };

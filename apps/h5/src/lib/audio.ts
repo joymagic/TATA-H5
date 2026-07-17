@@ -55,13 +55,15 @@ class AudioEngine {
 
   resumeFromWeChatBridge() {
     const bridge = window.WeixinJSBridge;
-    if (!this.enabled || typeof bridge?.invoke !== "function") return;
+    if (!this.enabled || typeof bridge?.invoke !== "function") return false;
     try {
       bridge.invoke("getNetworkType", {}, () => {
         void this.resumeMusic();
       });
+      return true;
     } catch {
       void this.resumeMusic();
+      return false;
     }
   }
 
@@ -104,15 +106,15 @@ class AudioEngine {
     music.loop = true;
     music.preload = "auto";
     music.volume = 0.32;
+    music.setAttribute("playsinline", "true");
+    music.setAttribute("webkit-playsinline", "true");
     this.music = music;
     return music;
   }
 
   private async resumeMusic() {
     const music = this.ensureMusic();
-    if (music.paused) {
-      await music.play().catch(() => undefined);
-    }
+    await music.play().catch(() => undefined);
   }
 
   private frequency(name: SoundName) {
