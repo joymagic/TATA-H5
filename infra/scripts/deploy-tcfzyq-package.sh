@@ -46,8 +46,18 @@ install_node() {
   node -e 'if (Number(process.versions.node.split(".")[0]) < 22) process.exit(1)'
 }
 
+ensure_service_user() {
+  if ! getent group www-data >/dev/null; then
+    groupadd --system www-data
+  fi
+  if ! id -u www-data >/dev/null 2>&1; then
+    useradd --system --gid www-data --no-create-home --home-dir /nonexistent --shell /sbin/nologin www-data
+  fi
+}
+
 install_dependencies
 install_node
+ensure_service_user
 
 install -d -m 0755 \
   "${RELEASE_DIR}/h5" \
