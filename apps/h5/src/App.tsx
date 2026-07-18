@@ -210,8 +210,8 @@ function App() {
     return `${activeResult.title} · ${activeResult.levelDisplay}`;
   }, [activeResult]);
 
-  async function startQuiz() {
-    await audioEngine.resumeFromGesture();
+  function startQuiz() {
+    void audioEngine.resumeFromGesture();
     audioEngine.play("tap");
     setQuestionIndex(0);
     setAnswers([]);

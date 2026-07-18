@@ -14,6 +14,7 @@ class AudioEngine {
   private context: AudioContext | null = null;
   private music: HTMLAudioElement | null = null;
   private enabled = true;
+  private musicResumePromise: Promise<boolean> | null = null;
   private weChatResumePromise: Promise<boolean> | null = null;
   private playbackListeners = new Set<(playing: boolean) => void>();
   private loopNodes: { oscillator: OscillatorNode; gain: GainNode }[] = [];
@@ -153,18 +154,30 @@ class AudioEngine {
     return music;
   }
 
-  private async resumeMusic() {
-    if (!this.enabled) return false;
+  private resumeMusic() {
+    if (!this.enabled) return Promise.resolve(false);
+    if (this.musicResumePromise) return this.musicResumePromise;
     const music = this.ensureMusic();
-    try {
-      await music.play();
-    } catch {
-      this.notifyPlaybackChange();
-      return false;
-    }
-    const playing = this.isMusicPlaying();
-    this.notifyPlaybackChange();
-    return playing;
+    const attempt = new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        this.notifyPlaybackChange();
+        resolve(this.isMusicPlaying());
+      };
+      try {
+        void music.play().then(finish, finish);
+      } catch {
+        finish();
+      }
+      window.setTimeout(finish, 1500);
+    });
+    this.musicResumePromise = attempt;
+    void attempt.finally(() => {
+      if (this.musicResumePromise === attempt) this.musicResumePromise = null;
+    });
+    return attempt;
   }
 
   private frequency(name: SoundName) {
