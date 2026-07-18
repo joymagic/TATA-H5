@@ -113,46 +113,27 @@ function App() {
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   useEffect(() => {
-    let audioPlaying = false;
-    let bridgeRetryTimer: number | null = null;
-    let bridgeRetryStopTimer: number | null = null;
     const resumeAudio = (event: Event) => {
       if (event.target instanceof Element && event.target.closest("[data-audio-toggle]")) return;
       void audioEngine.resumeFromGesture();
     };
-    const resumeWeChatAudio = async () => {
-      audioPlaying = await audioEngine.resumeFromWeChatBridge();
-      if (audioPlaying && bridgeRetryTimer !== null) {
-        window.clearInterval(bridgeRetryTimer);
-        bridgeRetryTimer = null;
-      }
+    const resumeWeChatAudio = () => {
+      void audioEngine.resumeFromWeChatBridge();
     };
     const resumeVisibleAudio = () => {
-      if (document.visibilityState === "visible") void resumeWeChatAudio();
+      if (document.visibilityState === "visible") resumeWeChatAudio();
     };
     const unsubscribePlayback = audioEngine.onPlaybackChange((playing) => {
-      audioPlaying = playing;
       setAudioEnabled(playing);
     });
-    window.addEventListener("pointerdown", resumeAudio, { once: true });
-    document.addEventListener("touchstart", resumeAudio, { once: true, passive: true });
+    window.addEventListener("click", resumeAudio, { once: true });
     document.addEventListener("visibilitychange", resumeVisibleAudio);
-    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
+    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
     audioEngine.preload();
-    void resumeWeChatAudio();
-    if (isWeChatBrowser(window.navigator.userAgent) && !audioPlaying) {
-      bridgeRetryTimer = window.setInterval(() => void resumeWeChatAudio(), 800);
-      bridgeRetryStopTimer = window.setTimeout(() => {
-        if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
-        bridgeRetryTimer = null;
-      }, 20000);
-    }
+    resumeWeChatAudio();
     return () => {
-      if (bridgeRetryTimer !== null) window.clearInterval(bridgeRetryTimer);
-      if (bridgeRetryStopTimer !== null) window.clearTimeout(bridgeRetryStopTimer);
       unsubscribePlayback();
-      window.removeEventListener("pointerdown", resumeAudio);
-      document.removeEventListener("touchstart", resumeAudio);
+      window.removeEventListener("click", resumeAudio);
       document.removeEventListener("visibilitychange", resumeVisibleAudio);
       document.removeEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     };

@@ -14,6 +14,7 @@ class AudioEngine {
   private context: AudioContext | null = null;
   private music: HTMLAudioElement | null = null;
   private enabled = true;
+  private weChatResumePromise: Promise<boolean> | null = null;
   private playbackListeners = new Set<(playing: boolean) => void>();
   private loopNodes: { oscillator: OscillatorNode; gain: GainNode }[] = [];
   private ambientMaster: GainNode | null = null;
@@ -27,7 +28,6 @@ class AudioEngine {
   preload() {
     const music = this.ensureMusic();
     music.load();
-    void this.resumeMusic();
   }
 
   onPlaybackChange(listener: (playing: boolean) => void) {
@@ -58,7 +58,8 @@ class AudioEngine {
   async resumeFromWeChatBridge() {
     const bridge = window.WeixinJSBridge;
     if (!this.enabled || typeof bridge?.invoke !== "function") return false;
-    return new Promise<boolean>((resolve) => {
+    if (this.weChatResumePromise) return this.weChatResumePromise;
+    const attempt = new Promise<boolean>((resolve) => {
       let resolved = false;
       const finish = (playing: boolean) => {
         if (resolved) return;
@@ -76,6 +77,11 @@ class AudioEngine {
         finish(this.isMusicPlaying());
       }, 1800);
     });
+    this.weChatResumePromise = attempt;
+    void attempt.finally(() => {
+      if (this.weChatResumePromise === attempt) this.weChatResumePromise = null;
+    });
+    return attempt;
   }
 
   play(name: SoundName) {
