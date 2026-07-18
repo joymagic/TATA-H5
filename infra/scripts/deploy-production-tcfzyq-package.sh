@@ -8,7 +8,8 @@ readonly RELEASE_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 readonly RELEASE_DIR="${TARGET_ROOT}/releases/${RELEASE_ID}"
 readonly EXPECTED_IP="${EXPECTED_IP:-82.157.98.16}"
 readonly ALLOW_PENDING_DNS="${ALLOW_PENDING_DNS:-0}"
-readonly H5_DOMAIN="www.tata.tcfzyq.online"
+readonly H5_DOMAIN="tata.tcfzyq.online"
+readonly LEGACY_H5_DOMAIN="www.tata.tcfzyq.online"
 readonly ADMIN_DOMAIN="tata-admin.tcfzyq.online"
 readonly ACCOUNTS_PATH="/etc/tata-production-admin-accounts.json"
 
@@ -80,7 +81,7 @@ systemctl enable --now nginx
 systemctl reload nginx
 
 dns_ready=1
-for domain in "${H5_DOMAIN}" "${ADMIN_DOMAIN}"; do
+for domain in "${H5_DOMAIN}" "${LEGACY_H5_DOMAIN}" "${ADMIN_DOMAIN}"; do
   if ! getent ahostsv4 "${domain}" | awk '{print $1}' | grep -qx "${EXPECTED_IP}"; then
     printf '%s does not resolve to %s yet.\n' "${domain}" "${EXPECTED_IP}" >&2
     dns_ready=0
@@ -102,6 +103,7 @@ certbot --nginx \
   --redirect \
   --cert-name "${H5_DOMAIN}" \
   -d "${H5_DOMAIN}" \
+  -d "${LEGACY_H5_DOMAIN}" \
   -d "${ADMIN_DOMAIN}"
 systemctl enable --now certbot-renew.timer 2>/dev/null || true
 

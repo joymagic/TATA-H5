@@ -44,7 +44,7 @@ printf '%s\n' \
   "revision=${REVISION}" \
   "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   "environment=production" \
-  "h5=https://www.tata.tcfzyq.online/" \
+  "h5=https://tata.tcfzyq.online/" \
   "admin=https://tata-admin.tcfzyq.online/" \
   > "${STAGING_DIR}/BUILD_INFO"
 
