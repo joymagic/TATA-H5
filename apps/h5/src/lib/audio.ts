@@ -51,7 +51,7 @@ class AudioEngine {
   }
 
   async resumeFromGesture() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.isMusicPlaying()) return;
     this.ensureContext();
     await this.resumeMusic();
   }

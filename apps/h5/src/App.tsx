@@ -145,7 +145,7 @@ function App() {
     const unsubscribePlayback = audioEngine.onPlaybackChange((playing) => {
       setAudioEnabled(playing);
     });
-    window.addEventListener("click", resumeAudio, { once: true });
+    window.addEventListener("click", resumeAudio);
     document.addEventListener("visibilitychange", resumeVisibleAudio);
     document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
     audioEngine.preload();
