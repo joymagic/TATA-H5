@@ -183,7 +183,7 @@ function App() {
   useEffect(() => {
     const paths = screen === "lottery"
       ? [PRIZE_BACKGROUND_URL]
-      : screen === "result" || screen === "lead"
+      : screen === "quiz" || screen === "resultLoading" || screen === "result" || screen === "lead"
         ? LOTTERY_VISUAL_PATHS
         : [];
     if (paths.length === 0) return;
