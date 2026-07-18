@@ -30,7 +30,6 @@ rsync -a \
   --exclude 'assets/result-backgrounds/' \
   --exclude 'assets/figma/quiz-web.zip' \
   apps/h5/dist/production/ "${STAGING_DIR}/h5/"
-install -m 0644 infra/verification/c20e9b8f922a1b12288507efa6e5f36f.txt "${STAGING_DIR}/h5/c20e9b8f922a1b12288507efa6e5f36f.txt"
 rsync -a --exclude '.DS_Store' apps/admin/dist/production/ "${STAGING_DIR}/admin/"
 
 install -m 0644 apps/api/src/server.mjs "${STAGING_DIR}/apps/api/src/server.mjs"
@@ -45,7 +44,7 @@ printf '%s\n' \
   "revision=${REVISION}" \
   "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   "environment=production" \
-  "h5=https://tata.tcfzyq.online/" \
+  "h5=https://www.tata.tcfzyq.online/" \
   "admin=https://tata-admin.tcfzyq.online/" \
   > "${STAGING_DIR}/BUILD_INFO"
 
