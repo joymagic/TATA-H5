@@ -1201,16 +1201,12 @@ function LotteryResultScreen({
           请截图保存您的代金券<br />
           2026年7月23日-2026年8月31日期间<br />
           可至全国门店签约后核销兑换<br />
-          礼品以门店设置为准
+          礼品以门店设置为准，详情请查看
+          <button type="button" onClick={onRules}>活动规则</button>
         </p>
         <button className="figma-hit-area figma-prize-home-hit" type="button" onClick={onBackHome}>
           <span>返回首页</span>
         </button>
-        <p className="figma-redemption-tip">
-          兑奖提示：兑奖周期为2026年7月23日-2026年8月31日，<br />
-          详细请查看
-          <button type="button" onClick={onRules}>活动规则</button>。
-        </p>
       </div>
     </section>
   );

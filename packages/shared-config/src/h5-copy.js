@@ -109,7 +109,7 @@ export const H5_COPY = {
     description: "奖品兑换码：",
     resultLabel: "恭喜您获得",
     couponTip:
-      "截图保存您的代金券，可至全国门店签约后核销兑换，礼品以门店设置为准",
+      "截图保存您的代金券，可至全国门店签约后核销兑换，礼品以门店设置为准，详情请查看活动规则",
     backHome: "返回首页",
   },
   system: {
