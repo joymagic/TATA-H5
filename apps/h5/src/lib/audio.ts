@@ -57,8 +57,10 @@ class AudioEngine {
   }
 
   async resumeFromWeChatBridge() {
+    if (!this.enabled) return false;
+    if (this.isMusicPlaying()) return true;
     const bridge = window.WeixinJSBridge;
-    if (!this.enabled || typeof bridge?.invoke !== "function") return false;
+    if (typeof bridge?.invoke !== "function") return false;
     if (this.weChatResumePromise) return this.weChatResumePromise;
     const attempt = new Promise<boolean>((resolve) => {
       let resolved = false;

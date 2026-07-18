@@ -132,27 +132,53 @@ function App() {
   const isFigmaScreen = ["loading", "home", "quiz", "resultLoading", "result", "lead", "lottery", "lotteryResult"].includes(screen);
 
   useEffect(() => {
+    const entryResumeTimers = new Set<number>();
+    const clearEntryResumeTimers = () => {
+      entryResumeTimers.forEach((timer) => window.clearTimeout(timer));
+      entryResumeTimers.clear();
+    };
+    const scheduleEntryAudioResume = () => {
+      clearEntryResumeTimers();
+      [0, 500, 2000, 4000].forEach((delay) => {
+        const timer = window.setTimeout(() => {
+          entryResumeTimers.delete(timer);
+          if (document.visibilityState === "visible") {
+            void audioEngine.resumeFromWeChatBridge();
+          }
+        }, delay);
+        entryResumeTimers.add(timer);
+      });
+    };
     const resumeAudio = (event: Event) => {
       if (event.target instanceof Element && event.target.closest("[data-audio-toggle]")) return;
       void audioEngine.resumeFromGesture();
     };
     const resumeWeChatAudio = () => {
-      void audioEngine.resumeFromWeChatBridge();
+      scheduleEntryAudioResume();
     };
     const resumeVisibleAudio = () => {
       if (document.visibilityState === "visible") resumeWeChatAudio();
     };
+    const resumePageAudio = () => {
+      scheduleEntryAudioResume();
+    };
     const unsubscribePlayback = audioEngine.onPlaybackChange((playing) => {
       setAudioEnabled(playing);
+      if (playing) clearEntryResumeTimers();
     });
     window.addEventListener("click", resumeAudio);
+    window.addEventListener("focus", resumePageAudio);
+    window.addEventListener("pageshow", resumePageAudio);
     document.addEventListener("visibilitychange", resumeVisibleAudio);
-    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio, { once: true });
+    document.addEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     audioEngine.preload();
-    resumeWeChatAudio();
+    scheduleEntryAudioResume();
     return () => {
+      clearEntryResumeTimers();
       unsubscribePlayback();
       window.removeEventListener("click", resumeAudio);
+      window.removeEventListener("focus", resumePageAudio);
+      window.removeEventListener("pageshow", resumePageAudio);
       document.removeEventListener("visibilitychange", resumeVisibleAudio);
       document.removeEventListener("WeixinJSBridgeReady", resumeWeChatAudio);
     };
