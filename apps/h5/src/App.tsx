@@ -55,7 +55,7 @@ const UPDATED_ASSET_VERSION = "20260716-1";
 const LOTTERY_PAGE_URL = `/assets/figma/figma-lottery-page.webp?v=${UPDATED_ASSET_VERSION}`;
 const LOTTERY_WHEEL_URL = `/assets/figma/figma-lottery-wheel.webp?v=${UPDATED_ASSET_VERSION}-centerfix1`;
 const LOTTERY_CENTER_URL = `/assets/figma/figma-lottery-center.webp?v=${UPDATED_ASSET_VERSION}`;
-const PRIZE_BACKGROUND_URL = `/assets/figma/figma-prize-background.webp?v=${UPDATED_ASSET_VERSION}`;
+const PRIZE_BACKGROUND_URL = "/assets/figma/figma-prize-background.webp?v=20260718-1";
 const LOTTERY_VISUAL_PATHS = [LOTTERY_PAGE_URL, LOTTERY_WHEEL_URL, LOTTERY_CENTER_URL];
 const QUIZ_VISUAL_PATHS = [
   "/assets/figma/quiz-web/quiz-question-01.webp",
