@@ -513,7 +513,9 @@ function LoadingScreen({ progress }: { progress: number }) {
         <span style={{ width: `${progress}%` }} />
       </div>
       <p className="figma-loading-percent">{progress}%</p>
-      <p className="figma-icp-record">沪 ICP 备 2026033411 号</p>
+      <a className="figma-icp-record" href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+        沪ICP备2026033411号-1
+      </a>
     </section>
   );
 }
@@ -618,7 +620,9 @@ function HomeScreen({
         <span>{H5_COPY.home.startButton.replace(/\s*→$/, "")}</span>
         <ChevronRight aria-hidden="true" />
       </button>
-      <p className="figma-icp-record">沪 ICP 备 2026033411 号</p>
+      <a className="figma-icp-record" href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">
+        沪ICP备2026033411号-1
+      </a>
     </section>
   );
 }

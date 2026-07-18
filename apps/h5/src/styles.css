@@ -1721,6 +1721,7 @@ button:disabled {
   font-weight: 400;
   line-height: 18px;
   text-align: center;
+  text-decoration: none;
   white-space: nowrap;
   transform: translateX(-50%);
 }
