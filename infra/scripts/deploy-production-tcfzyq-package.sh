@@ -11,6 +11,7 @@ readonly ALLOW_PENDING_DNS="${ALLOW_PENDING_DNS:-0}"
 readonly H5_DOMAIN="www.tata.tcfzyq.online"
 readonly ADMIN_DOMAIN="tata-admin.tcfzyq.online"
 readonly ACCOUNTS_PATH="/etc/tata-production-admin-accounts.json"
+readonly NGINX_SITE_PATH="/etc/nginx/sites-available/tata-production.conf"
 
 if [[ "${EUID}" -ne 0 ]]; then
   printf 'Run this deployment script as root.\n' >&2
@@ -104,6 +105,10 @@ certbot --nginx \
   -d "${H5_DOMAIN}" \
   -d "${ADMIN_DOMAIN}"
 systemctl enable --now certbot-renew.timer 2>/dev/null || true
+
+if ! grep -q '^[[:space:]]*http2 on;' "${NGINX_SITE_PATH}"; then
+  sed -i '/listen 443 ssl;.*managed by Certbot/a\    http2 on;' "${NGINX_SITE_PATH}"
+fi
 
 nginx -t
 systemctl reload nginx

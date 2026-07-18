@@ -52,6 +52,11 @@ const LOTTERY_FAST_SPIN_MS = 2000;
 const LOTTERY_FAST_SPIN_ROUNDS = 6;
 const LOTTERY_SETTLE_MS = 650;
 const UPDATED_ASSET_VERSION = "20260716-1";
+const LOTTERY_PAGE_URL = `/assets/figma/figma-lottery-page.webp?v=${UPDATED_ASSET_VERSION}`;
+const LOTTERY_WHEEL_URL = `/assets/figma/figma-lottery-wheel.webp?v=${UPDATED_ASSET_VERSION}-centerfix1`;
+const LOTTERY_CENTER_URL = `/assets/figma/figma-lottery-center.webp?v=${UPDATED_ASSET_VERSION}`;
+const PRIZE_BACKGROUND_URL = `/assets/figma/figma-prize-background.webp?v=${UPDATED_ASSET_VERSION}`;
+const LOTTERY_VISUAL_PATHS = [LOTTERY_PAGE_URL, LOTTERY_WHEEL_URL, LOTTERY_CENTER_URL];
 const QUIZ_VISUAL_PATHS = [
   "/assets/figma/quiz-web/quiz-question-01.webp",
   "/assets/figma/quiz-web/quiz-question-02.webp",
@@ -60,19 +65,33 @@ const QUIZ_VISUAL_PATHS = [
   `/assets/figma/quiz-web/quiz-question-05.webp?v=${UPDATED_ASSET_VERSION}`,
 ];
 const WAVEFORM_HEIGHTS = [8, 14, 24, 34, 20, 12, 28, 38, 18, 30, 16, 36, 22, 12, 29, 39, 25, 14, 32, 20, 37, 17, 27, 39, 23, 12, 31, 18, 26, 10];
+const imagePreloadCache = new Map<string, { image: HTMLImageElement; promise: Promise<void> }>();
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
 function preloadImage(src: string) {
-  return new Promise<void>((resolve, reject) => {
-    const image = new Image();
+  const cached = imagePreloadCache.get(src);
+  if (cached) return cached.promise;
+  const image = new Image();
+  const promise = new Promise<void>((resolve, reject) => {
     image.decoding = "async";
-    image.onload = () => resolve();
-    image.onerror = () => reject(new Error(`Failed to preload ${src}`));
+    image.onload = () => {
+      if (typeof image.decode === "function") {
+        void image.decode().then(resolve, resolve);
+      } else {
+        resolve();
+      }
+    };
+    image.onerror = () => {
+      imagePreloadCache.delete(src);
+      reject(new Error(`Failed to preload ${src}`));
+    };
     image.src = src;
   });
+  imagePreloadCache.set(src, { image, promise });
+  return promise;
 }
 
 function nextWheelRotation(currentRotation: number, prizeLevel: LotteryPrize["prizeLevel"]) {
@@ -142,9 +161,7 @@ function App() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       QUIZ_VISUAL_PATHS.forEach((src) => {
-        const image = new Image();
-        image.decoding = "async";
-        image.src = src;
+        void preloadImage(src).catch(() => undefined);
       });
     }, 600);
     return () => window.clearTimeout(timer);
@@ -162,6 +179,21 @@ function App() {
       cancelled = true;
     };
   }, [screen, activeResult, resultBackground]);
+
+  useEffect(() => {
+    const paths = screen === "lottery"
+      ? [PRIZE_BACKGROUND_URL]
+      : screen === "result" || screen === "lead"
+        ? LOTTERY_VISUAL_PATHS
+        : [];
+    if (paths.length === 0) return;
+    const timer = window.setTimeout(() => {
+      paths.forEach((src) => {
+        void preloadImage(src).catch(() => undefined);
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [screen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -957,7 +989,7 @@ function LotteryScreen({
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-screen">
       <div className="figma-static-canvas">
-        <img className="figma-static-art" src={`/assets/figma/figma-lottery-page.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
+        <img className="figma-static-art" src={LOTTERY_PAGE_URL} alt="" aria-hidden="true" />
         <button className="figma-hit-area figma-lottery-back-hit" type="button" onClick={onBack} aria-label="返回">
           <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </button>
@@ -970,11 +1002,11 @@ function LotteryScreen({
           style={{ "--wheel-rotation": `${rotation}deg` } as CSSProperties}
           aria-hidden="true"
         >
-          <img src={`/assets/figma/figma-lottery-wheel.png?v=${UPDATED_ASSET_VERSION}-centerfix1`} alt="" />
+          <img src={LOTTERY_WHEEL_URL} alt="" />
         </div>
         <div className="figma-lottery-pointer" aria-hidden="true" />
         <button className="figma-lottery-draw-hit" disabled={isDrawing} type="button" onClick={onDraw}>
-          <img src={`/assets/figma/figma-lottery-center.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
+          <img src={LOTTERY_CENTER_URL} alt="" aria-hidden="true" />
           <span className="sr-only">{H5_COPY.lottery.button}</span>
         </button>
       </div>
@@ -1127,7 +1159,7 @@ function LotteryResultScreen({
   return (
     <section className="screen figma-screen figma-static-screen figma-lottery-result-screen">
       <div className="figma-static-canvas">
-        <img className="figma-static-art" src={`/assets/figma/figma-prize-background.png?v=${UPDATED_ASSET_VERSION}`} alt="" aria-hidden="true" />
+        <img className="figma-static-art" src={PRIZE_BACKGROUND_URL} alt="" aria-hidden="true" />
         <button className="figma-back-button figma-prize-visible-back" type="button" onClick={onBackHome} aria-label="返回首页">
           <img src={`/assets/figma/figma-back.png?v=${UPDATED_ASSET_VERSION}`} alt="" />
         </button>
