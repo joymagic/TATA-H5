@@ -1708,6 +1708,23 @@ button:disabled {
   transform: translateX(-50%);
 }
 
+.figma-icp-record {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: max-content;
+  max-width: 90%;
+  margin: 0;
+  color: #2b2424;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
 .figma-home-actions {
   position: absolute;
   z-index: 3;
