@@ -1070,7 +1070,7 @@ function LotteryScreen({
         </button>
         <div className="figma-lottery-title">
           <h1>点击抽奖</h1>
-          <strong>获取您的TATA木门好房子大奖</strong>
+          <strong>获取您的TATA木门好房子<span>大奖</span></strong>
         </div>
         <div
           className={`figma-lottery-wheel is-${spinMode}`}
