@@ -102,7 +102,7 @@ export const H5_COPY = {
   },
   lottery: {
     button: "点击抽奖",
-    limitTip: "获取您的美好人居大奖",
+    limitTip: "获取您的TATA木门好房子大奖",
   },
   lotteryResult: {
     title: "恭喜您获得",

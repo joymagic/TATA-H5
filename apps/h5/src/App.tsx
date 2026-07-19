@@ -1070,7 +1070,7 @@ function LotteryScreen({
         </button>
         <div className="figma-lottery-title">
           <h1>点击抽奖</h1>
-          <strong>获取您的美好人居大奖</strong>
+          <strong>获取您的TATA木门好房子大奖</strong>
         </div>
         <div
           className={`figma-lottery-wheel is-${spinMode}`}
@@ -1121,7 +1121,7 @@ function LeadScreen({
       <div className="figma-lead-card">
         <div className="figma-lead-intro">
           <p>TATA 木门深度参编行业标准《室内木质隔声门》LY/T3134-2019，依托专业隔声数值，建立四级静音分级体系，完整覆盖茶室、书房、卧室、电竞房等全生活场景。</p>
-          <strong>填写您的基础信息，参与抽奖，即可获得美好人居<span>大奖</span></strong>
+          <strong>填写您的基础信息，参与抽奖，即可获得TATA木门好房子<span>大奖</span></strong>
         </div>
         <div className="figma-form-stack">
           <Field label={H5_COPY.lead.fields.name.label}>

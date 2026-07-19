@@ -2710,6 +2710,7 @@ button:disabled {
 
 .figma-lottery-title strong {
   color: #c80028;
+  font-size: clamp(16px, 5vw, 20px);
 }
 
 .figma-lottery-draw-hit img {
