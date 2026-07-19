@@ -2714,7 +2714,7 @@ button:disabled {
 }
 
 .figma-lottery-title strong span {
-  color: #ffe100;
+  color: inherit;
 }
 
 .figma-lottery-draw-hit img {
