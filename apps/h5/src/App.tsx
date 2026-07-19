@@ -125,6 +125,7 @@ function App() {
   const [rulesOpen, setRulesOpen] = useState(false);
   const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
   const [drawReminderOpen, setDrawReminderOpen] = useState(false);
+  const [privacyPromptOpen, setPrivacyPromptOpen] = useState(false);
   const selectTimer = useRef<number | null>(null);
   const currentQuestion = QUESTIONS[questionIndex];
   const activeResult = result;
@@ -282,6 +283,7 @@ function App() {
     setWheelSpinMode("idle");
     setWheelRotation(0);
     setDrawReminderOpen(false);
+    setPrivacyPromptOpen(false);
     setValidation("");
     setScreen("quiz");
   }
@@ -368,24 +370,23 @@ function App() {
     }
   }
 
-  function validateLead() {
-    if (!lead.name.trim()) return H5_COPY.lead.validation.name;
-    if (!/^1[3-9]\d{9}$/.test(lead.phone.trim())) return H5_COPY.lead.validation.phone;
-    if (!lead.province) return "请选择省份";
-    if (!lead.city) return H5_COPY.lead.validation.city;
-    if (!lead.privacyConsent) return H5_COPY.lead.validation.privacy;
+  function validateLead(candidate: LeadFormState) {
+    if (!candidate.name.trim()) return H5_COPY.lead.validation.name;
+    if (!/^1[3-9]\d{9}$/.test(candidate.phone.trim())) return H5_COPY.lead.validation.phone;
+    if (!candidate.province) return "请选择省份";
+    if (!candidate.city) return H5_COPY.lead.validation.city;
+    if (!candidate.privacyConsent) return H5_COPY.lead.validation.privacy;
     return "";
   }
 
-  async function submitLead() {
-    audioEngine.play("tap");
-    const error = validateLead();
+  async function submitLead(candidate: LeadFormState) {
+    const error = validateLead(candidate);
     setValidation(error);
     if (error) return;
     releaseFormFocus();
     setIsSubmittingLead(true);
     try {
-      await activityApi.submitLead(lead);
+      await activityApi.submitLead(candidate);
       setScreen("lottery");
       window.requestAnimationFrame(() => window.scrollTo(0, 0));
     } catch {
@@ -393,6 +394,23 @@ function App() {
     } finally {
       setIsSubmittingLead(false);
     }
+  }
+
+  function requestLeadSubmit() {
+    audioEngine.play("tap");
+    if (!lead.privacyConsent) {
+      setPrivacyPromptOpen(true);
+      return;
+    }
+    void submitLead(lead);
+  }
+
+  function acceptPrivacyAndSubmit() {
+    audioEngine.play("tap");
+    const nextLead = { ...lead, privacyConsent: true };
+    setLead(nextLead);
+    setPrivacyPromptOpen(false);
+    void submitLead(nextLead);
   }
 
   async function drawLottery() {
@@ -444,6 +462,7 @@ function App() {
     setWheelSpinMode("idle");
     setWheelRotation(0);
     setDrawReminderOpen(false);
+    setPrivacyPromptOpen(false);
     setValidation("");
     setScreen("home");
   }
@@ -505,7 +524,7 @@ function App() {
             onBack={() => setScreen("result")}
             onChange={setLead}
             onLegalDocument={setLegalDocument}
-            onSubmit={submitLead}
+            onSubmit={requestLeadSubmit}
           />
         )}
         {screen === "lottery" && (
@@ -525,6 +544,12 @@ function App() {
           <LegalDocumentModal documentKey={legalDocument} onClose={() => setLegalDocument(null)} />
         )}
         {drawReminderOpen && <DrawReminderModal onClose={() => setDrawReminderOpen(false)} />}
+        {privacyPromptOpen && (
+          <PrivacyConsentModal
+            onAccept={acceptPrivacyAndSubmit}
+            onClose={() => setPrivacyPromptOpen(false)}
+          />
+        )}
         {posterPreviewOpen && (
           <WeChatPosterPreview
             dataUrl={posterDataUrl}
@@ -765,6 +790,30 @@ function DrawReminderModal({ onClose }: { onClose: () => void }) {
         <h2 id="draw-reminder-title">温馨提醒</h2>
         <p>该手机号已参与过抽奖，每个手机号仅有一次抽奖机会。感谢您的参与！</p>
         <button className="draw-reminder-confirm" type="button" onClick={onClose}>我知道了</button>
+      </section>
+    </div>
+  );
+}
+
+function PrivacyConsentModal({ onAccept, onClose }: { onAccept: () => void; onClose: () => void }) {
+  return (
+    <div className="draw-reminder-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="draw-reminder-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="privacy-consent-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button className="draw-reminder-close" type="button" onClick={onClose} aria-label="关闭隐私提示">
+          <X size={18} />
+        </button>
+        <h2 id="privacy-consent-title">隐私提示</h2>
+        <p>我已阅读并同意《隐私政策》和《个人信息处理授权书》，授权 TATA 木门处理我的个人信息，用于提供定制化服务及后续联系。</p>
+        <div className="privacy-consent-actions">
+          <button className="privacy-consent-cancel" type="button" onClick={onClose}>暂不同意</button>
+          <button className="draw-reminder-confirm" type="button" onClick={onAccept}>同意并继续</button>
+        </div>
       </section>
     </div>
   );
@@ -1129,14 +1178,18 @@ function LeadScreen({
             </Field>
           </div>
         </div>
-        <label className="figma-privacy-row">
-          <input
-            type="checkbox"
-            checked={lead.privacyConsent}
-            onChange={(event) => onChange({ ...lead, privacyConsent: event.target.checked })}
-          />
+        <div className="figma-privacy-row">
+          <label className="figma-privacy-checkbox" htmlFor="tata-privacy-consent">
+            <input
+              id="tata-privacy-consent"
+              type="checkbox"
+              checked={lead.privacyConsent}
+              onChange={(event) => onChange({ ...lead, privacyConsent: event.target.checked })}
+            />
+            <span aria-hidden="true" />
+          </label>
           <span>
-            我已阅读并同意
+            <label className="figma-privacy-copy" htmlFor="tata-privacy-consent">我已阅读并同意</label>
             <button
               className="figma-rules-link"
               type="button"
@@ -1148,7 +1201,7 @@ function LeadScreen({
             >
               《隐私政策》
             </button>
-            和
+            <label className="figma-privacy-copy" htmlFor="tata-privacy-consent">和</label>
             <button
               className="figma-rules-link"
               type="button"
@@ -1160,11 +1213,11 @@ function LeadScreen({
             >
               《个人信息处理授权书》
             </button>
-            ，授权 TATA 木门处理我的个人信息，用于提供定制化服务及后续联系。
+            <label className="figma-privacy-copy" htmlFor="tata-privacy-consent">，授权 TATA 木门处理我的个人信息，用于提供定制化服务及后续联系。</label>
           </span>
-        </label>
+        </div>
         {validation && <p className="validation-message">{validation}</p>}
-        <button className="figma-submit-button" disabled={!lead.privacyConsent || isSubmitting} type="button" onClick={onSubmit}>
+        <button className="figma-submit-button" disabled={isSubmitting} type="button" onClick={onSubmit}>
           <span>{H5_COPY.lead.submit}</span>
         </button>
       </div>

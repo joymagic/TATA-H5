@@ -1451,6 +1451,25 @@ button:disabled {
   font-weight: 700;
 }
 
+.privacy-consent-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.privacy-consent-actions button {
+  height: 46px;
+  margin-top: 0;
+  border: 1px solid #2b2424;
+  font-weight: 700;
+}
+
+.privacy-consent-cancel {
+  color: #2b2424;
+  background: transparent;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .ambient-beams::before {
     animation: sound-drift 9s ease-in-out infinite alternate;
@@ -3039,8 +3058,33 @@ button:disabled {
   line-height: 1.35;
 }
 
-.figma-privacy-row input {
-  appearance: none;
+.figma-privacy-checkbox {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+  touch-action: manipulation;
+}
+
+.figma-privacy-checkbox::before {
+  position: absolute;
+  top: -12px;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  content: "";
+}
+
+.figma-privacy-checkbox input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.figma-privacy-checkbox > span {
+  display: block;
   width: 16px;
   height: 16px;
   margin: 1px 0 0;
@@ -3049,9 +3093,13 @@ button:disabled {
   background: transparent;
 }
 
-.figma-privacy-row input:checked {
+.figma-privacy-checkbox input:checked + span {
   background: #ce0027;
   box-shadow: inset 0 0 0 3px #eddfd6;
+}
+
+.figma-privacy-copy {
+  touch-action: manipulation;
 }
 
 .figma-rules-link {
